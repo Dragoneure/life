@@ -7,7 +7,7 @@ all:
 	make -C $(KERNELDIR) M=$(PWD) modules
 
 check:
-	./checkpatch.pl -f -q --no-tree *.c
+	./check/checkpatch.pl -f -q --no-tree *.c
 
 debug:
 	make -C $(KERNELDIR) M=$(PWD) ccflags-y+="-DDEBUG -g" modules
@@ -16,4 +16,4 @@ clean:
 	make -C $(KERNELDIR) M=$(PWD) clean
 	rm -rf *~
 
-.PHONY: all clean
+.PHONY: all clean check
