@@ -59,3 +59,4 @@ share
 sc_qemu.sh
 lazygit
 lazygit.tar.gz
+.env
