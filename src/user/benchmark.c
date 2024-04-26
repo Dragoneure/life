@@ -27,10 +27,7 @@ void test_write()
 	char next[SIZE_STRING + 1];
 	char next_after[SIZE_STRING + 1];
 	char actual[SIZE_INSERT + 1];
-	//FILE *fd1 = fopen("/root/test/file.txt", "r+");
-	FILE *fd1 = fopen(
-		"/home/harena/snail/M1/S2/LIFE_project/life/share/file1.txt",
-		"r+b");
+	FILE *fd1 = fopen("/root/test/file.txt", "r+");
 	if (fd1 == NULL) {
 		printf("cannot open the file\n");
 	}
@@ -40,7 +37,7 @@ void test_write()
 	prev[SIZE_STRING] = '\0';
 	next[SIZE_STRING] = '\0';
 	/*
-	 * move the file pointer where we would like d-to insert our string 
+	 * move the file pointer where we would like to insert our string 
 	 */
 	fseek(fd1, INSERT, SEEK_SET);
 	char buff1[] = "Hello cruel world!!!";
