@@ -82,8 +82,6 @@ void test_read(int round, char *file1, char *file2)
 			goto close;
 		}
 		timersub(&tval_after1, &tval_before1, &tval_result1);
-		//printf("%ld.%06ld\n", tval_result1.tv_sec,
-		//     tval_result1.tv_usec);
 		timersub(&tval_after2, &tval_after1, &tval_result2);
 		/*
 		 * To get the worst time because maybe some blocs are already inside page cache (or buffer cache : need to check) 
@@ -91,8 +89,6 @@ void test_read(int round, char *file1, char *file2)
 		max_time(&result1, &tval_result1);
 		max_time(&result2, &tval_result2);
 	}
-	printf("before : %ld.%06ld\nafter : %ld.%06ld\n", tval_before1.tv_sec,
-	       tval_before1.tv_usec, tval_after1.tv_sec, tval_after1.tv_usec);
 	printf("filesystem [read] : ok\n");
 	printf("First read  : %ld.%06ld\n", result1.tv_sec, result1.tv_usec);
 	printf("Second read : %ld.%06ld\n", result2.tv_sec, result2.tv_usec);
@@ -172,6 +168,7 @@ void test_insertion(char *file)
 	printf("next string : \nbefore : %s\nafter  : %s\n", next, next_after);
 	printf("inserted  string : \nbefore : %s\nafter  : %s\n", buff1,
 	       actual);
+	printf("filesystem [insertion] : ok\n");
 
 	timersub(&tval_after1, &tval_before1, &tval_result1);
 	timersub(&tval_after2, &tval_before2, &tval_result2);
