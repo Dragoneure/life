@@ -1,22 +1,47 @@
+#include <bits/types/struct_timeval.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/time.h>
 #include <time.h>
 #include <stdlib.h>
+#include <unistd.h>
 #define INSERT 200
 #define SIZE_STRING 40
 #define SIZE_INSERT 20
 #define SIZE_READ 50
 #define SIZE_WRITE 50
 
+void max_time(struct timeval *res, struct timeval *new)
+{
+	if (res->tv_sec < new->tv_sec) {
+		res->tv_sec = new->tv_sec;
+		res->tv_usec = new->tv_usec;
+		return;
+	}
+
+	if ((res->tv_sec == new->tv_sec) && (res->tv_usec < new->tv_usec)) {
+		res->tv_sec = new->tv_sec;
+		res->tv_usec = new->tv_usec;
+	}
+}
 /*
  * Test if the function read of our filesystem works 
  * file1 should be a file located on working filesystem
  * file2 should be a file located on our filesystem
  */
-
 void test_read(int round, char *file1, char *file2)
 {
+	struct timeval tval_before1, tval_after1, tval_result1, tval_before2,
+		tval_after2, tval_result2;
+
+	struct timeval result1 = {
+		.tv_sec = 0,
+		.tv_usec = 0,
+	}, result2 = {
+		.tv_sec = 0,
+		.tv_usec = 0,
+	};
 	FILE *f1 = fopen(file1, "r+");
 	FILE *f2 = fopen(file2, "r+");
 	fseek(f1, 0, SEEK_END);
@@ -38,8 +63,11 @@ void test_read(int round, char *file1, char *file2)
 	for (int i = 0; i < round; i++) {
 		fseek(f1, rand_seek, SEEK_SET);
 		fseek(f2, rand_seek, SEEK_SET);
+		gettimeofday(&tval_before1, NULL);
 		read1 = fread(buff1, sizeof(char), SIZE_READ, f1);
+		gettimeofday(&tval_after1, NULL);
 		read2 = fread(buff2, sizeof(char), SIZE_READ, f2);
+		gettimeofday(&tval_after2, NULL);
 		buff1[SIZE_READ] = '\0';
 		buff2[SIZE_READ] = '\0';
 		rand_seek = rand() % (size_file1 - SIZE_READ);
@@ -53,8 +81,22 @@ void test_read(int round, char *file1, char *file2)
 			printf("buff1 : %s\nbuff2 : %s", buff1, buff2);
 			goto close;
 		}
+		timersub(&tval_after1, &tval_before1, &tval_result1);
+		//printf("%ld.%06ld\n", tval_result1.tv_sec,
+		//     tval_result1.tv_usec);
+		timersub(&tval_after2, &tval_after1, &tval_result2);
+		/*
+		 * To get the worst time because maybe some blocs are already inside page cache (or buffer cache : need to check) 
+		 */
+		max_time(&result1, &tval_result1);
+		max_time(&result2, &tval_result2);
 	}
+	printf("before : %ld.%06ld\nafter : %ld.%06ld\n", tval_before1.tv_sec,
+	       tval_before1.tv_usec, tval_after1.tv_sec, tval_after1.tv_usec);
 	printf("filesystem [read] : ok\n");
+	printf("First read  : %ld.%06ld\n", result1.tv_sec, result1.tv_usec);
+	printf("Second read : %ld.%06ld\n", result2.tv_sec, result2.tv_usec);
+
 close:
 	fclose(f1);
 	fclose(f2);
@@ -62,8 +104,8 @@ close:
 
 void test_insertion(char *file)
 {
-	clock_t start, end, start2, end2;
-	double time_used_write, time_used_read;
+	struct timeval tval_before1, tval_after1, tval_result1, tval_before2,
+		tval_after2, tval_result2;
 	int size1 = 0;
 	int write;
 	/*
@@ -95,17 +137,17 @@ void test_insertion(char *file)
 	 */
 	fseek(fd1, INSERT, SEEK_SET);
 	char buff1[] = "Hello cruel world!!!";
-	start = clock();
+	gettimeofday(&tval_before1, NULL);
 	fwrite(buff1, sizeof(char), strlen(buff1), fd1);
-	end = clock();
-
+	gettimeofday(&tval_after1, NULL);
 	fseek(fd1, INSERT - SIZE_STRING, SEEK_SET);
 
-	start2 = clock();
+	gettimeofday(&tval_before2, NULL);
 	fread(prev_after, sizeof(char), SIZE_STRING, fd1);
 	fread(actual, sizeof(char), SIZE_INSERT, fd1);
 	fread(next_after, sizeof(char), SIZE_STRING, fd1);
-	end2 = clock();
+	gettimeofday(&tval_after2, NULL);
+
 	prev_after[SIZE_STRING] = '\0';
 	next_after[SIZE_STRING] = '\0';
 	actual[SIZE_INSERT] = '\0';
@@ -131,11 +173,13 @@ void test_insertion(char *file)
 	printf("inserted  string : \nbefore : %s\nafter  : %s\n", buff1,
 	       actual);
 
-	time_used_write = ((double)(end - start)) / CLOCKS_PER_SEC;
-	time_used_read = ((double)(end2 - start2)) / CLOCKS_PER_SEC;
-	printf("Writing at %d octets took : %f\n", INSERT, time_used_write);
-	printf("Reading : %d after instertion took : %f\n",
-	       SIZE_STRING * 2 + SIZE_INSERT, time_used_read);
+	timersub(&tval_after1, &tval_before1, &tval_result1);
+	timersub(&tval_after2, &tval_before2, &tval_result2);
+	printf("Writing at %d octets took : %ld.%08ld\n", INSERT,
+	       tval_result1.tv_sec, tval_result1.tv_usec);
+	printf("Reading : %d after instertion took : %ld.%08ld\n",
+	       SIZE_STRING * 2 + SIZE_INSERT, tval_result2.tv_sec,
+	       tval_result2.tv_usec);
 err:
 	fclose(fd1);
 }
