@@ -51,7 +51,7 @@ void test_read(int round, char *file1, char *file2)
 	int read1 = 0;
 	int read2 = 0;
 	if (size_file1 != size_file2) {
-		printf("file : %s and %s are not the same\n", file1, file2);
+		printf("file   : %s and %s are not the same\n", file1, file2);
 		printf("size 1 : %d and size2 : %d\n", size_file1, size_file2);
 		goto close;
 		return;
