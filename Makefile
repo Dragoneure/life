@@ -26,9 +26,13 @@ module:
 	make -C $(KERNELDIR) M=$(PWD) modules
 	$(call move_files)
 
-user:
-	# user files
-	$(CC) -static src/user/benchmark.c -o $(SHAREDIR)/benchmark.o 
+user: 
+	test bench
+
+test:
+	$(CC) -static src/user/test.c -o $(SHAREDIR)/test.o 
+bench:
+	$(CC) -static src/user/bench.c -o $(SHAREDIR)/bench.o 
 
 scripts:
 	# copy scripts

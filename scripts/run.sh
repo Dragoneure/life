@@ -12,7 +12,8 @@ fi
 
 # run the user executables
 cd $TESTDIR
-/share/benchmark.o
+/share/test.o
+/share/bench.o
 cd ~
 
 # cleanup
