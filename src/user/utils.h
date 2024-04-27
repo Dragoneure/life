@@ -76,9 +76,13 @@ struct time_data {
 
 #define TIME_START(time) clock_gettime(CLOCK_MONOTONIC, &time.start);
 
-#define TIME_END(time)                                                   \
-	clock_gettime(CLOCK_MONOTONIC, &time.end);                       \
-	time.diff = (time.end.tv_sec - time.start.tv_sec) * 1000000000 + \
-		    (time.end.tv_nsec - time.start.tv_nsec) / 1000;
+#define TIME_END(time)                                                        \
+	do {                                                                  \
+		clock_gettime(CLOCK_MONOTONIC, &time.end);                    \
+		time.diff =                                                   \
+			((time.end.tv_sec - time.start.tv_sec) * 1000000000UL + \
+			 (time.end.tv_nsec - time.start.tv_nsec)) /           \
+			1000;                                                 \
+	} while (0)
 
 #endif /* UTILS_H */
