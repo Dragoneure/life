@@ -1,200 +1,165 @@
-#include <bits/types/struct_timeval.h>
+#include <ctype.h>
+#include <limits.h>
+#include <stddef.h>
 #include <stdio.h>
-#include <fcntl.h>
-#include <string.h>
-#include <sys/time.h>
-#include <time.h>
 #include <stdlib.h>
-#include <unistd.h>
-#define INSERT 200
-#define SIZE_STRING 40
-#define SIZE_INSERT 20
-#define SIZE_READ 50
-#define SIZE_WRITE 50
+#include <string.h>
+#include <time.h>
 
-void max_time(struct timeval *res, struct timeval *new)
+#define BLOCK_SIZE (1 << 12) /* 4 KiB */
+#define MAX_FILESIZE (1 << 22) /* 4 MiB */
+
+#define ANSI_GREEN "\x1b[32m"
+#define ANSI_RED "\x1b[31m"
+#define ANSI_RESET "\x1b[0m"
+
+#define TEST_SUCCESS 0
+#define TEST_FAIL 1
+
+#define pr_test(fmt, ...) \
+	printf("%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+
+#define RUN_TEST(test_name, ...)                                          \
+	do {                                                              \
+		if (test_name(__VA_ARGS__) == 0) {                        \
+			printf("%s ... " ANSI_GREEN "OK" ANSI_RESET "\n", \
+			       #test_name);                               \
+		} else {                                                  \
+			printf("%s ... " ANSI_RED "FAIL" ANSI_RESET "\n", \
+			       __func__);                                 \
+		}                                                         \
+	} while (0)
+
+void init_rand_file(FILE *f)
 {
-	if (res->tv_sec < new->tv_sec) {
-		res->tv_sec = new->tv_sec;
-		res->tv_usec = new->tv_usec;
-		return;
-	}
-
-	if ((res->tv_sec == new->tv_sec) && (res->tv_usec < new->tv_usec)) {
-		res->tv_sec = new->tv_sec;
-		res->tv_usec = new->tv_usec;
-	}
+	for (int i = 0; i < MAX_FILESIZE; i++)
+		fputc(rand() % CHAR_MAX, f);
 }
-/*
- * Test if the function read of our filesystem works 
- * file1 should be a file located on working filesystem
- * file2 should be a file located on our filesystem
- */
-void test_read(int round, char *file1, char *file2)
-{
-	struct timeval tval_before1, tval_after1, tval_result1, tval_before2,
-		tval_after2, tval_result2;
 
-	struct timeval result1 = {
-		.tv_sec = 0,
-		.tv_usec = 0,
-	}, result2 = {
-		.tv_sec = 0,
-		.tv_usec = 0,
-	};
-	FILE *f1 = fopen(file1, "r+");
-	FILE *f2 = fopen(file2, "r+");
-	fseek(f1, 0, SEEK_END);
-	fseek(f2, 0, SEEK_END);
-	int size_file1 = ftell(f1);
-	int size_file2 = ftell(f2);
-	int read1 = 0;
-	int read2 = 0;
-	if (size_file1 != size_file2) {
-		printf("file   : %s and %s are not the same\n", file1, file2);
-		printf("size 1 : %d and size2 : %d\n", size_file1, size_file2);
-		goto close;
-		return;
+void pr_buf(const char *buf, size_t len)
+{
+	printf("\"");
+	for (size_t i = 0; i < len; ++i) {
+		if (isprint(buf[i])) {
+			printf("%c", buf[i]);
+		} else {
+			printf("?");
+		}
+	}
+	printf("\"");
+}
+
+#define ASSERT_BUF_EQ(buf_actual, buf_expected, len)                         \
+	if (memcmp(buf_actual, buf_expected, len) != 0) {                    \
+		pr_test(ANSI_RED "Buffer comparison failed: \n" ANSI_RESET); \
+		printf("\tActual: ");                                        \
+		pr_buf(buf_actual, len);                                     \
+		printf("\n\tExpected: ");                                    \
+		pr_buf(buf_expected, len);                                   \
+		printf("\n");                                                \
+		return TEST_FAIL;                                            \
 	}
 
-	char buff1[SIZE_READ + 1];
-	char buff2[SIZE_READ + 1];
-	int rand_seek = 0;
+struct time_data {
+	struct timespec start;
+	struct timespec end;
+	time_t diff; // in us
+};
+
+#define TIME_START(time) clock_gettime(CLOCK_MONOTONIC, &time.start);
+
+#define TIME_END(time)                                                   \
+	clock_gettime(CLOCK_MONOTONIC, &time.end);                       \
+	time.diff = (time.end.tv_sec - time.start.tv_sec) * 1000000000 + \
+		    (time.end.tv_nsec - time.start.tv_nsec) / 1000;
+
+int test_write_read()
+{
+	FILE *f = fopen(__func__, "w+");
+	fseek(f, BLOCK_SIZE - 5, SEEK_SET);
+
+	long pos = ftell(f);
+	char wbuf[] = "Hello cruel world!";
+	size_t len = strlen(wbuf);
+
+	struct time_data t;
+	TIME_START(t);
+	fwrite(wbuf, sizeof(char), len, f);
+	TIME_END(t);
+	pr_test("Time taken for write: %ld us\n", t.diff);
+
+	char rbuf[len];
+	fseek(f, pos, SEEK_SET);
+	fread(rbuf, sizeof(char), len, f);
+
+	ASSERT_BUF_EQ(rbuf, wbuf, len);
+	return TEST_SUCCESS;
+}
+
+int test_rand_read(int read1, int read2)
+{
+	int read_fn[] = { read1, read2 };
+	FILE *f = fopen(__func__, "w+");
+	init_rand_file(f);
+
+	size_t len = 256;
+	int round = 100;
+	char expect[2][len];
+
 	for (int i = 0; i < round; i++) {
-		fseek(f1, rand_seek, SEEK_SET);
-		fseek(f2, rand_seek, SEEK_SET);
-		gettimeofday(&tval_before1, NULL);
-		read1 = fread(buff1, sizeof(char), SIZE_READ, f1);
-		gettimeofday(&tval_after1, NULL);
-		read2 = fread(buff2, sizeof(char), SIZE_READ, f2);
-		gettimeofday(&tval_after2, NULL);
-		buff1[SIZE_READ] = '\0';
-		buff2[SIZE_READ] = '\0';
-		rand_seek = rand() % (size_file1 - SIZE_READ);
-		if (read1 != read2) {
-			printf("filesystem [read] : number of read\n");
-			printf("read1 : %d\nread2 : %d\n", read1, read2);
-			goto close;
-		}
-		if (strncmp(buff1, buff2, SIZE_READ)) {
-			printf("filesystem [read] : not the good data\n");
-			printf("buff1 : %s\nbuff2 : %s", buff1, buff2);
-			goto close;
-		}
-		timersub(&tval_after1, &tval_before1, &tval_result1);
-		timersub(&tval_after2, &tval_after1, &tval_result2);
-		/*
-		 * To get the worst time because maybe some blocs are already inside page cache (or buffer cache : need to check) 
-		 */
-		max_time(&result1, &tval_result1);
-		max_time(&result2, &tval_result2);
+		long rand_pos = rand() % MAX_FILESIZE;
+		// TODO: set first and second read fn
+		fseek(f, rand_pos, SEEK_SET);
+		fread(expect[0], sizeof(char), len, f);
+		fseek(f, rand_pos, SEEK_SET);
+		fread(expect[1], sizeof(char), len, f);
+		ASSERT_BUF_EQ(expect[0], expect[1], len);
 	}
-	printf("filesystem [read] : ok\n");
-	printf("First read  : %ld.%06ld\n", result1.tv_sec, result1.tv_usec);
-	printf("Second read : %ld.%06ld\n", result2.tv_sec, result2.tv_usec);
 
-close:
-	fclose(f1);
-	fclose(f2);
+	return TEST_SUCCESS;
 }
 
-void test_insertion(char *file)
+int test_insert()
 {
-	struct timeval tval_before1, tval_after1, tval_result1, tval_before2,
-		tval_after2, tval_result2;
-	int size1 = 0;
-	int write;
-	/*
-	 * prev buffer : previous string  where we inserted our string 
-	 * next buffer : next string  where we inserted our string
-	 * prev_after  buffer : previous string  where we inserted our string after we inserted the string
-	 * next_after  buffer : next string  where we inserted our string after we inserted the string
-	 * actual buffer : te string we insterted 
-	 */
+	FILE *f = fopen(__func__, "w+");
+	init_rand_file(f);
 
-	char prev[SIZE_STRING + 1];
-	char prev_after[SIZE_STRING + 1];
+	char wbuf[] = "Hello cruel world!!!";
+	size_t len = strlen(wbuf);
 
-	char next[SIZE_STRING + 1];
-	char next_after[SIZE_STRING + 1];
-	char actual[SIZE_INSERT + 1];
-	/* we should create an another option to insert into a file */
-	FILE *fd1 = fopen(file, "r+");
-	if (fd1 == NULL) {
-		printf("cannot open the file\n");
-	}
-	fseek(fd1, INSERT - SIZE_STRING, SEEK_SET);
-	fread(prev, sizeof(char), SIZE_STRING, fd1);
-	fread(next, sizeof(char), SIZE_STRING, fd1);
-	prev[SIZE_STRING] = '\0';
-	next[SIZE_STRING] = '\0';
-	/*
-	 * move the file pointer where we would like to insert our string 
-	 */
-	fseek(fd1, INSERT, SEEK_SET);
-	char buff1[] = "Hello cruel world!!!";
-	gettimeofday(&tval_before1, NULL);
-	fwrite(buff1, sizeof(char), strlen(buff1), fd1);
-	gettimeofday(&tval_after1, NULL);
-	fseek(fd1, INSERT - SIZE_STRING, SEEK_SET);
+	char prev_rbuf[3][len];
+	char rbuf[3][len];
+	long pos = BLOCK_SIZE / 3;
 
-	gettimeofday(&tval_before2, NULL);
-	fread(prev_after, sizeof(char), SIZE_STRING, fd1);
-	fread(actual, sizeof(char), SIZE_INSERT, fd1);
-	fread(next_after, sizeof(char), SIZE_STRING, fd1);
-	gettimeofday(&tval_after2, NULL);
+	fseek(f, pos - len, SEEK_SET);
+	for (int i = 0; i < 3; i++)
+		fread(prev_rbuf[i], sizeof(char), len, f);
 
-	prev_after[SIZE_STRING] = '\0';
-	next_after[SIZE_STRING] = '\0';
-	actual[SIZE_INSERT] = '\0';
-	if (strncmp(prev, prev_after, SIZE_STRING)) {
-		printf("problem with previous string : \nbefore : %s\nafter  : %s\n",
-		       prev, prev_after);
-		goto err;
-	}
-	if (strncmp(next, next_after, SIZE_STRING)) {
-		printf("problem with next string : \nbefore : %s\nafter  : %s\n",
-		       next, next_after);
-		goto err;
-	}
-	if (strncmp(buff1, actual, SIZE_INSERT)) {
-		printf("problem with inserted  string : \nbefore : %s\nafter  : %s\n",
-		       buff1, actual);
-		goto err;
+	fseek(f, pos, SEEK_SET);
+	fwrite(wbuf, sizeof(char), len, f);
+
+	fseek(f, pos - len, SEEK_SET);
+	for (int i = 0; i < 3; i++)
+		fread(rbuf[i], sizeof(char), len, f);
+
+	ASSERT_BUF_EQ(rbuf[0], prev_rbuf[0], len);
+	ASSERT_BUF_EQ(rbuf[1], wbuf, len);
+	ASSERT_BUF_EQ(rbuf[2], prev_rbuf[2], len);
+
+	for (int i = 0; i < 3; i++) {
+		pr_test("rbuf content: ");
+		pr_buf(rbuf[i], len);
+		printf("\n");
 	}
 
-	printf("previous string : \nbefore : %s\nafter  : %s\n", prev,
-	       prev_after);
-	printf("next string : \nbefore : %s\nafter  : %s\n", next, next_after);
-	printf("inserted  string : \nbefore : %s\nafter  : %s\n", buff1,
-	       actual);
-	printf("filesystem [insertion] : ok\n");
-
-	timersub(&tval_after1, &tval_before1, &tval_result1);
-	timersub(&tval_after2, &tval_before2, &tval_result2);
-	printf("Writing at %d octets took : %ld.%08ld\n", INSERT,
-	       tval_result1.tv_sec, tval_result1.tv_usec);
-	printf("Reading : %d after instertion took : %ld.%08ld\n",
-	       SIZE_STRING * 2 + SIZE_INSERT, tval_result2.tv_sec,
-	       tval_result2.tv_usec);
-err:
-	fclose(fd1);
+	return TEST_SUCCESS;
 }
 
-/*
- * Number of argument of main should always be : 3
- * 1 : executable
- * 2 : file1 or the file of insertion if test_insertion
- * 3 : file2 or 0 if test_insertion
- */
 int main(int argc, char **argv)
 {
-	if (argc < 3) {
-		printf("Bad arguments\n");
-		return 0;
-	}
-	srand(time(NULL));
-	//test_insertion(argv[1]);
-	test_read(10, argv[1], argv[2]);
+	srand(42);
+	RUN_TEST(test_write_read);
+	RUN_TEST(test_insert);
+	RUN_TEST(test_rand_read, 1, 2);
 	return 0;
 }
