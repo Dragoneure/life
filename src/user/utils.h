@@ -57,7 +57,14 @@ static inline void pr_buf(const char *buf, size_t len)
 		}                                                         \
 	} while (0)
 
-#define ASSERT_BUF_EQ(buf_actual, buf_expected, len)                         \
+#define ASSERT_EQ(actual, expected)                                           \
+	if (actual != expected) {                                             \
+		pr_test(ANSI_RED "Comparison failed: \n" ANSI_RESET);         \
+		printf("\tActual: %zu\n\tExpected: %zu\n", actual, expected); \
+		return TEST_FAIL;                                             \
+	}
+
+#define ASSERT_EQ_BUF(buf_actual, buf_expected, len)                         \
 	if (memcmp(buf_actual, buf_expected, len) != 0) {                    \
 		pr_test(ANSI_RED "Buffer comparison failed: \n" ANSI_RESET); \
 		printf("\tActual: ");                                        \
@@ -76,13 +83,13 @@ struct time_data {
 
 #define TIME_START(time) clock_gettime(CLOCK_MONOTONIC, &time.start);
 
-#define TIME_END(time)                                                        \
-	do {                                                                  \
-		clock_gettime(CLOCK_MONOTONIC, &time.end);                    \
-		time.diff =                                                   \
-			((time.end.tv_sec - time.start.tv_sec) * 1000000000UL + \
-			 (time.end.tv_nsec - time.start.tv_nsec)) /           \
-			1000;                                                 \
+#define TIME_END(time)                                                  \
+	do {                                                            \
+		clock_gettime(CLOCK_MONOTONIC, &time.end);              \
+		time.diff = ((time.end.tv_sec - time.start.tv_sec) *    \
+				     1000000000UL +                     \
+			     (time.end.tv_nsec - time.start.tv_nsec)) / \
+			    1000;                                       \
 	} while (0)
 
 #endif /* UTILS_H */
