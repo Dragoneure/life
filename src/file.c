@@ -227,6 +227,7 @@ const struct file_operations ouichefs_file_ops = {
 	.owner = THIS_MODULE,
 	.open = ouichefs_open,
 	.llseek = generic_file_llseek,
+	.read = ouichefs_read,
 	.read_iter = generic_file_read_iter,
 	.write_iter = generic_file_write_iter
 };
