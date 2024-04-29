@@ -1,5 +1,5 @@
 obj-m += ouichefs.o
-ouichefs-objs := src/fs.o src/super.o src/inode.o src/file.o src/dir.o
+ouichefs-objs := src/fs.o src/super.o src/inode.o src/file.o src/dir.o src/read.o
 
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 ENV_KERNELDIR := $(shell grep -Po '^KERNELDIR=\K.*' .env 2> /dev/null)
