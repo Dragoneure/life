@@ -60,3 +60,5 @@ sc_qemu.sh
 lazygit
 lazygit.tar.gz
 .env
+compile_commands.json
+run-vm.sh
