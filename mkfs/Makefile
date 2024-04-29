@@ -1,6 +1,6 @@
 BIN ?= mkfs.ouichefs
 IMG ?= test.img
-IMGSIZE ?= 50
+IMGSIZE ?= 12500
 
 all: ${BIN}
 
@@ -9,7 +9,7 @@ ${BIN}: mkfs-ouichefs.c
 
 img: ${BIN}
 	rm -rf ${IMG}
-	dd if=/dev/zero of=${IMG} bs=1M count=${IMGSIZE}
+	dd if=/dev/zero of=${IMG} bs=4KiB  count=${IMGSIZE}
 	./${BIN} ${IMG}
 	sync
 
