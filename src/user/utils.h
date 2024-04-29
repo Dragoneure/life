@@ -6,7 +6,9 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <time.h>
-
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
 #define BLOCK_SIZE (1 << 12) /* 4 KiB */
 #define MAX_FILESIZE (1 << 22) /* 4 MiB */
 
@@ -17,10 +19,15 @@
 #define TEST_SUCCESS 0
 #define TEST_FAIL 1
 
-static inline void init_rand_file(FILE *f)
+static inline void init_rand_file(int fd)
 {
-	for (int i = 0; i < MAX_FILESIZE; i++)
-		fputc(rand() % CHAR_MAX, f);
+	int num;
+	char c;
+	for (int i = 0; i < MAX_FILESIZE; i++) {
+		num = rand() % CHAR_MAX;
+		c = (char) num;
+		write(fd, &c, 1);
+	}
 }
 
 static inline void pr_buf(const char *buf, size_t len)
