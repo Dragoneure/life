@@ -18,6 +18,9 @@ void bench_write_read()
 	char wbuf[len];
 	memset(wbuf, 1, len);
 
+	/* Avoid caching optimisation from previous code */
+	flush_cache();
+
 	for (int i = 0; i < MAX_FILESIZE; i += BLOCK_SIZE) {
 		for (int j = 0; j < BLOCK_SIZE; j += BLOCK_SIZE / 10) {
 			struct time_data t;

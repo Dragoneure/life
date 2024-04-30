@@ -5,13 +5,12 @@
  * Copyright (C) 2018  Redha Gouicem <redha.gouicem@lip6.fr>
  */
 
-#define pr_fmt(fmt) "%s:%s: " fmt, KBUILD_MODNAME, __func__
-
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/fs.h>
 
 #include "ouichefs.h"
+#include "debug.h"
 
 /*
  * Mount a ouiche_fs partition
@@ -66,9 +65,25 @@ static int __init ouichefs_init(void)
 		goto err_inode;
 	}
 
+	/* sysfs */
+
+	kobj_sysfs = kobject_create_and_add("ouichefs", kernel_kobj);
+	if (!kobj_sysfs) {
+		pr_err("kobject_create_and_add() failed\n");
+		goto err_inode;
+	}
+
+	ret = sysfs_create_file(kobj_sysfs, &read_fn_attr.attr);
+	if (ret) {
+		pr_err("sysfs_create_file() for read_fn_attr failed\n");
+		goto err_kobj;
+	}
+
 	pr_info("module loaded\n");
 	return 0;
 
+err_kobj:
+	kobject_put(kobj_sysfs);
 err_inode:
 	ouichefs_destroy_inode_cache();
 err:
@@ -84,6 +99,9 @@ static void __exit ouichefs_exit(void)
 		pr_err("unregister_filesystem() failed\n");
 
 	ouichefs_destroy_inode_cache();
+
+	/* sysfs */
+	kobject_put(kobj_sysfs);
 
 	pr_info("module unloaded\n");
 }

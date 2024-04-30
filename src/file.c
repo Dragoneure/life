@@ -223,7 +223,7 @@ static int ouichefs_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-const struct file_operations ouichefs_file_ops = {
+struct file_operations ouichefs_file_ops = {
 	.owner = THIS_MODULE,
 	.open = ouichefs_open,
 	.llseek = generic_file_llseek,

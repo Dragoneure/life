@@ -12,8 +12,15 @@ fi
 
 # run the user executables
 cd $TESTDIR
+
+echo -n '0' > /sys/kernel/ouichefs/read_fn
 /share/test.o
 /share/bench.o
+
+echo -n '1' > /sys/kernel/ouichefs/read_fn
+/share/test.o
+/share/bench.o
+
 cd ~
 
 # cleanup
