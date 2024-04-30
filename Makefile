@@ -38,6 +38,9 @@ scripts:
 	# copy scripts
 	cp scripts/run.sh $(SHAREDIR)
 
+img:
+	make -C mkfs img
+
 check:
 	./check/checkpatch.pl -f -q --no-tree src/*.c
 
