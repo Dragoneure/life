@@ -1,5 +1,6 @@
 #include "utils.h"
 #include <fcntl.h>
+
 int test_write_read()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
@@ -20,8 +21,6 @@ int test_rand_read(int read1, int read2)
 {
 	int read_fn[] = { read1, read2 };
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
-	/*add by Harena*/
-	int fd2 = open(__func__, O_RDWR);
 	init_rand_file(fd);
 
 	size_t len = 256;
@@ -33,11 +32,11 @@ int test_rand_read(int read1, int read2)
 		size_t rand_pos = rand() % MAX_FILESIZE;
 		// TODO: set first and second read fn
 		lseek(fd, rand_pos, SEEK_SET);
-		lseek(fd2, rand_pos, SEEK_SET);
 		readen[0] = read(fd, expect[0], len);
-		readen[1] = read(fd2, expect[1], len);
-		ASSERT_EQ_BUF(expect[0], expect[1], len);
+		lseek(fd, rand_pos, SEEK_SET);
+		readen[1] = read(fd, expect[1], len);
 		ASSERT_EQ(readen[0], readen[1]);
+		ASSERT_EQ_BUF(expect[0], expect[1], readen[0]);
 	}
 
 	return TEST_SUCCESS;
@@ -103,8 +102,8 @@ int main(int argc, char **argv)
 {
 	srand(42);
 	RUN_TEST(test_write_read);
-	//RUN_TEST(test_insert);
+	RUN_TEST(test_insert);
 	RUN_TEST(test_rand_read, 1, 2);
-	//RUN_TEST(test_write_end);
+	RUN_TEST(test_write_end);
 	return 0;
 }

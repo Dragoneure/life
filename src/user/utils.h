@@ -19,14 +19,19 @@
 #define TEST_SUCCESS 0
 #define TEST_FAIL 1
 
+static inline void init_rand_buf(char *buf, size_t len)
+{
+	for (int i = 0; i < len; i++)
+		buf[i] = (char)(rand() % CHAR_MAX);
+}
+
 static inline void init_rand_file(int fd)
 {
-	int num;
-	char c;
-	for (int i = 0; i < MAX_FILESIZE; i++) {
-		num = rand() % CHAR_MAX;
-		c = (char) num;
-		write(fd, &c, 1);
+	size_t len = BLOCK_SIZE;
+	char buf[len];
+	for (int i = 0; i < MAX_FILESIZE; i += len) {
+		init_rand_buf(buf, len);
+		write(fd, buf, len);
 	}
 }
 
@@ -55,6 +60,7 @@ static inline void pr_buf(const char *buf, size_t len)
 
 #define RUN_TEST(test_name, ...)                                          \
 	do {                                                              \
+		printf("RUNNING %s\n", #test_name);                       \
 		if (test_name(__VA_ARGS__) == 0) {                        \
 			printf("%s ... " ANSI_GREEN "OK" ANSI_RESET "\n", \
 			       #test_name);                               \

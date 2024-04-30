@@ -1,5 +1,13 @@
 #include "utils.h"
 
+void flush_cache()
+{
+	sync();
+	int fd = open("/proc/sys/vm/drop_caches", O_WRONLY);
+	write(fd, "1", 1);
+	close(fd);
+}
+
 void bench_write_read()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
@@ -20,6 +28,9 @@ void bench_write_read()
 		}
 	}
 
+	/* Avoid caching optimisation after write */
+	flush_cache();
+
 	lseek(fd, 0, SEEK_SET);
 	char rbuf[len];
 
@@ -37,6 +48,6 @@ void bench_write_read()
 
 int main(int argc, char **argv)
 {
-	//RUN_BENCH(bench_write_read);
+	RUN_BENCH(bench_write_read);
 	return 0;
 }
