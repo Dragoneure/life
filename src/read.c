@@ -27,6 +27,7 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 	int logical_pos = (*pos) % OUICHEFS_BLOCK_SIZE;
 
 	//pr_info("pos : %lld\n", *pos);
+	//pr_info("logical pos :%d\n", logical_pos);
 	struct inode *inode = file->f_inode;
 	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
 	sector_t index_block = ci->index_block;
@@ -35,6 +36,9 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 	sector_t sc;
 	/*inode -> i_blocks, total number of the file, including the block of index*/
 	int nb_blocks = inode->i_blocks - 1;
+	if (nb_blocks > 1024)
+		nb_blocks = 1024;
+	//pr_info("nb_blocks here :%d\n", nb_blocks);
 	//pr_info("nb_block : %d\n", nb_blocks);
 	//pr_info("file size : %lld\n", inode->i_size);
 
@@ -52,13 +56,14 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 	index = (struct ouichefs_file_index_block *)bh_index->b_data;
 
 	last_bloc_size = inode->i_size % OUICHEFS_BLOCK_SIZE;
+	//pr_info("file size : %lld\n", inode->i_size);
 	/* if the last bock of the file is full
 	 * It's possible that the modulo return 0 if the file is
 	 * empty, so last_block_size_should be 0
 	 */
 	if ((last_bloc_size == 0) && (nb_blocks > 1))
 		last_bloc_size = OUICHEFS_BLOCK_SIZE;
-	//pr_info("last block size : %d\n", last_bloc_size);
+	// pr_info("last block size : %d\n", last_bloc_size);
 	while ((remaining_read) && (block_logical_number < nb_blocks)) {
 		//pr_info("number of round : %d\n", block_logical_number);
 		sc = (sector_t)index->blocks[block_logical_number];
@@ -75,7 +80,7 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 		/*Not read more than what we can read and what we want to read*/
 		to_read = min(available_size, remaining_read);
 		//pr_info("to read : %d\n", to_read);
-		//pr_info("logical pos : %d\n", logical_pos);
+		// pr_info("logical pos : %d\n", logical_pos);
 		data = (char *)bh_data->b_data;
 		read = copy_to_user(buff + (buff_offset - 1),
 				    (data + logical_pos), to_read);
@@ -90,10 +95,18 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 		 * If we read a new block, for sure the cursor position in this block 
 		 * will be at the begining
 		 */
+		//pr_info("to read :%d\n", to_read);
+		//pr_info("nb_blocks : %d\n", nb_blocks);
 		logical_pos = 0;
 		brelse(bh_data);
 	}
 	brelse(bh_index);
 	*pos += total_read;
+	if (*pos >= (1 << 22))
+		*pos = 1 << 22;
+	// pr_info("after the read : %lld\n", *pos);
+	// pr_info("total read : %d\n", total_read);
+	// pr_info("available size : %lu\n", available_size);
+	// pr_info("remaining read : %lu\n", remaining_read);
 	return total_read;
 }
