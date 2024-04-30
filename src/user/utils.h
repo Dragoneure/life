@@ -1,6 +1,7 @@
 #ifndef _UTILS_H
 #define _UTILS_H
 
+// #include <cstddef>
 #include <ctype.h>
 #include <stdio.h>
 #include <limits.h>
@@ -43,6 +44,12 @@ static inline char get_read_fn()
 #define TEST_SUCCESS 0
 #define TEST_FAIL 1
 
+static inline void init_seq_buff(char *buf, size_t len, int *pos)
+{
+	int write = 0;
+	for(int i = 0; i < len; i+= write)
+		write = snprintf(buf, 10, " %d ", *pos++); 
+}
 static inline void init_rand_buf(char *buf, size_t len)
 {
 	for (int i = 0; i < len; i++)
