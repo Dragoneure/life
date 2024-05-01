@@ -13,10 +13,10 @@ insmod /share/ouichefs.ko
 
 # mount a ouichefs test directory
 TESTDIR=~/tests-ouichefs
-if [ ! -d "$TESTDIR" ]; then
+# if [ ! -d "$TESTDIR" ]; then
   mkdir $TESTDIR
   mount /share/test.img $TESTDIR
-fi
+# fi
 
 # run the user executables
 cd $TESTDIR
