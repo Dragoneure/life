@@ -1,5 +1,13 @@
 #! /bin/bash
 
+# example usage
+#
+# using random seeds
+# ./run.sh
+#
+# using user seed for all tests
+# ./run.sh 42
+
 # load ouichefs
 insmod /share/ouichefs.ko
 
@@ -13,16 +21,25 @@ fi
 # run the user executables
 cd $TESTDIR
 
+# use the provided seed or generate a new one
+seed=$1
+if [ ! -n "$seed" ]; then
+  seed=$(date +%s)
+fi
+  
 echo -e "\n\033[1mUsing kernel default read:\033[0m\n"
 
 echo -n '0' > /sys/kernel/ouichefs/read_fn
-/share/test.o
+/share/test.o "$seed"
 /share/bench.o
 
 echo -e "\n\033[1mUsing simple read:\033[0m\n"
 
 echo -n '1' > /sys/kernel/ouichefs/read_fn
-/share/test.o
+if [ ! -n "$1" ]; then
+  seed=$((seed + 1))
+fi
+/share/test.o "$seed"
 /share/bench.o
 
 cd ~

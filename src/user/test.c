@@ -116,12 +116,19 @@ int test_write_block_end()
 
 int main(int argc, char **argv)
 {
-	// srand(42);
-	srand(time(NULL));
+	int seed = 42;
+	/* Use the provided seed */
+	if (argc > 1)
+		seed = atoi(argv[1]);
+
+	srand(seed);
+	pr_test("Seed used: %d\n", seed);
+
 	RUN_TEST(test_write_read);
 	RUN_TEST(test_insert);
 	RUN_TEST(test_rand_read, 1, 2);
 	RUN_TEST(test_write_filesize_end);
 	RUN_TEST(test_write_block_end);
+
 	return 0;
 }
