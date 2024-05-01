@@ -19,7 +19,7 @@ define move_files
 	*.mod.c *.symvers *.order $(BUILDDIR)
 endef
 
-all: module user scripts test bench
+all: module user scripts
 
 module:
 	# module
