@@ -20,7 +20,7 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 
 	/* 
 	 * Get the size of the last block to read. Needed to manage file
-	 * size which are not multiple of BLOCK_SIZE.
+	 * sizes that are not multiple of BLOCK_SIZE.
 	 */
 	int last_block_size = inode->i_size % OUICHEFS_BLOCK_SIZE;
 	if (last_block_size == 0 && inode->i_size != 0)
@@ -29,7 +29,7 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 	/* Number of data blocks in the file (without the index block) */
 	int nb_blocks = inode->i_blocks - 1;
 	/* Index of the block where the cursor is */
-	int logical_block_index = (*pos) >> 12;
+	int logical_block_index = (*pos) / OUICHEFS_BLOCK_SIZE;
 	/* Cursor position inside the current block */
 	int logical_pos = (*pos) % OUICHEFS_BLOCK_SIZE;
 
