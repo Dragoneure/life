@@ -1,7 +1,6 @@
 #ifndef _UTILS_H
 #define _UTILS_H
 
-// #include <cstddef>
 #include <ctype.h>
 #include <stdio.h>
 #include <limits.h>
@@ -10,6 +9,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+
+#include <sys/ioctl.h>
+#include "../ioctl.h"
 
 #define BLOCK_SIZE (1 << 12) /* 4 KiB */
 #define MAX_FILESIZE (1 << 22) /* 4 MiB */
@@ -186,6 +188,18 @@ struct time_data {
 				     1000000000UL +                     \
 			     (time.end.tv_nsec - time.start.tv_nsec)) / \
 			    1000;                                       \
+	} while (0)
+
+/* Ioctl commands */
+
+#define SHOW_FILE_INFO()                                       \
+	do {                                                   \
+		int fd = open("/dev/ouichefs-dev", O_RDONLY);  \
+		struct ouichefs_file_info file_info;           \
+		ioctl(fd, OUICHEFS_IOC_FILE_INFO, &file_info); \
+		pr_test("File info: \n"                        \
+			"\tfoo=%d\n",                          \
+			file_info.foo);                        \
 	} while (0)
 
 #endif /* UTILS_H */

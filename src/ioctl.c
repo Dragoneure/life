@@ -1,4 +1,5 @@
 #include "ouichefs.h"
+#include "ioctl.h"
 
 static int ouichefs_ioctl_file_info(struct file *file, void __user *argp)
 {
