@@ -21,27 +21,32 @@ int test_rand_read(int read1, int read2)
 {
 	int read_fn[] = { read1, read2 };
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
-	init_rand_file(fd);
+	init_seq_file(fd);
 
-	size_t len = 256;
+	size_t len = 10900;
 	int round = 100;
 	char expect[2][len];
 	size_t readen[2];
+	int pos = 0;
 
 	for (int i = 0; i < round; i++) {
 		size_t rand_pos = rand() % MAX_FILESIZE;
 		size_t rand_len = len;
 
 		set_read_fn(DEFAULT_READ);
-		lseek(fd, rand_pos, SEEK_SET);
+		pos = lseek(fd, rand_pos, SEEK_SET);
+		// printf("pos after lseek before read kernel default : %d\n",
+		// pos);
 		readen[0] = read(fd, expect[0], rand_len);
 
 		set_read_fn(SIMPLE_READ);
-		lseek(fd, rand_pos, SEEK_SET);
+		pos = lseek(fd, rand_pos, SEEK_SET);
+		// printf("pos after lseek before read kernel ouichefs : %d\n",
+		// pos);
 		readen[1] = read(fd, expect[1], rand_len);
 
 		ASSERT_EQ(readen[0], readen[1]);
-		ASSERT_EQ_BUF(expect[0], expect[1], readen[0]);
+		ASSERT_EQ_BUF(expect[1], expect[0], readen[0]);
 	}
 
 	return TEST_SUCCESS;
@@ -85,19 +90,21 @@ int test_insert()
 
 int check_write_end(int fd, size_t end_pos)
 {
+	printf("end pos : %lu\n", end_pos);
 	char wbuf[] =
 		"Riding on a pancake spaceship, the syrupy crew soared through galaxies.";
 	size_t len = strlen(wbuf);
 
-	lseek(fd, end_pos - len, SEEK_SET);
+	int pos = lseek(fd, end_pos - len, SEEK_SET);
 	ASSERT_EQ(write(fd, wbuf, len), len);
 
 	char rbuf[len];
 	size_t end_offset = 16;
 
-	lseek(fd, end_pos - end_offset, SEEK_SET);
+	pos = lseek(fd, end_pos - end_offset, SEEK_SET);
 	ASSERT_EQ(read(fd, rbuf, len), end_offset);
-	ASSERT_EQ_BUF(rbuf, &wbuf[len - end_offset], end_offset)
+	ASSERT_EQ_BUF(rbuf, &wbuf[len - end_offset], end_offset);
+	close(fd);
 
 	return TEST_SUCCESS;
 }

@@ -44,12 +44,21 @@ static inline char get_read_fn()
 #define TEST_SUCCESS 0
 #define TEST_FAIL 1
 
-static inline void init_seq_buff(char *buf, size_t len, int *pos)
-{
-	int write = 0;
-	for(int i = 0; i < len; i+= write)
-		write = snprintf(buf, 10, " %d ", *pos++); 
+static inline void init_seq_buff(char *buf, size_t len, int *pos) {
+    int written;
+    for (int i = 0; i < len - 1; ) {
+        size_t remaining = len - i;
+        written = snprintf(buf + i, remaining, "%d ", *pos);
+        if (written < 0 || (size_t)written >= remaining) {
+            break;
+        }
+        *pos += 1;
+        i += written;
+    }
+    // buf[len - 1] =  '\n';
+    // buf[len - 1] =  '\0';
 }
+
 static inline void init_rand_buf(char *buf, size_t len)
 {
 	for (int i = 0; i < len; i++)
@@ -66,6 +75,16 @@ static inline void init_rand_file(int fd)
 	}
 }
 
+static inline void init_seq_file(int fd)
+{
+	int pos = 0;
+	size_t len = BLOCK_SIZE;
+	char buf[len];
+	for (int i = 0; i < MAX_FILESIZE; i += len) {
+		init_seq_buff(buf, len, &pos);
+		write(fd, buf, len);
+	}
+}
 static inline void pr_buf(const char *buf, size_t len)
 {
 	printf("\"");
