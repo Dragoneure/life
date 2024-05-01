@@ -88,6 +88,17 @@ struct ouichefs_dir_block {
 	} files[OUICHEFS_MAX_SUBFILES];
 };
 
+struct ouichefs_file_info {
+	int foo;
+};
+
+/* ioctl commands */
+#define OUICHEFS_IOCTL_MAGIC 'N'
+#define OUICHEFS_IOC_FILE_INFO \
+	_IOR(OUICHEFS_IOCTL_MAGIC, 1, struct ouichefs_file_info)
+
+extern struct file_operations ouichefs_ioctl_ops;
+
 /* superblock functions */
 int ouichefs_fill_super(struct super_block *sb, void *data, int silent);
 
