@@ -99,6 +99,9 @@ static inline void pr_buf(const char *buf, size_t len)
 	for (size_t i = 0; i < len; i++) {
 		if (isprint(buf[i])) {
 			printf("%c", buf[i]);
+			continue;
+		} else if (buf[i] == '\0') {
+			printf("\\0");
 		} else {
 			printf("?");
 		}

@@ -21,7 +21,7 @@ int test_write_read()
 int test_rand_read()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
-	init_seq_file(fd);
+	init_rand_file(fd);
 	flush_cache();
 
 	size_t len = BLOCK_SIZE * 10;
