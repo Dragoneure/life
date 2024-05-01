@@ -6,7 +6,9 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <time.h>
-
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
 #define BLOCK_SIZE (1 << 12) /* 4 KiB */
 #define MAX_FILESIZE (1 << 22) /* 4 MiB */
 
@@ -17,10 +19,20 @@
 #define TEST_SUCCESS 0
 #define TEST_FAIL 1
 
-static inline void init_rand_file(FILE *f)
+static inline void init_rand_buf(char *buf, size_t len)
 {
-	for (int i = 0; i < MAX_FILESIZE; i++)
-		fputc(rand() % CHAR_MAX, f);
+	for (int i = 0; i < len; i++)
+		buf[i] = (char)(rand() % CHAR_MAX);
+}
+
+static inline void init_rand_file(int fd)
+{
+	size_t len = BLOCK_SIZE;
+	char buf[len];
+	for (int i = 0; i < MAX_FILESIZE; i += len) {
+		init_rand_buf(buf, len);
+		write(fd, buf, len);
+	}
 }
 
 static inline void pr_buf(const char *buf, size_t len)
@@ -48,6 +60,7 @@ static inline void pr_buf(const char *buf, size_t len)
 
 #define RUN_TEST(test_name, ...)                                          \
 	do {                                                              \
+		printf("RUNNING %s\n", #test_name);                       \
 		if (test_name(__VA_ARGS__) == 0) {                        \
 			printf("%s ... " ANSI_GREEN "OK" ANSI_RESET "\n", \
 			       #test_name);                               \

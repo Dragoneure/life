@@ -1,9 +1,16 @@
 #include "utils.h"
-#include <string.h>
+
+void flush_cache()
+{
+	sync();
+	int fd = open("/proc/sys/vm/drop_caches", O_WRONLY);
+	write(fd, "1", 1);
+	close(fd);
+}
 
 void bench_write_read()
 {
-	FILE *f = fopen(__func__, "w+");
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
 	time_t w_time = 0;
 	time_t r_time = 0;
 
@@ -15,19 +22,22 @@ void bench_write_read()
 		for (int j = 0; j < BLOCK_SIZE; j += BLOCK_SIZE / 10) {
 			struct time_data t;
 			TIME_START(t);
-			fwrite(wbuf, sizeof(char), len, f);
+			write(fd, wbuf, len);
 			TIME_END(t);
 			w_time += t.diff;
 		}
 	}
 
-	fseek(f, 0, SEEK_SET);
+	/* Avoid caching optimisation after write */
+	flush_cache();
+
+	lseek(fd, 0, SEEK_SET);
 	char rbuf[len];
 
 	for (int i = 0; i < MAX_FILESIZE; i += len) {
 		struct time_data t;
 		TIME_START(t);
-		fread(rbuf, sizeof(char), len, f);
+		read(fd, rbuf, len);
 		TIME_END(t);
 		r_time += t.diff;
 	}
