@@ -15,7 +15,7 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 	/* Read index block from disk */
 	bh_index = sb_bread(inode->i_sb, ci->index_block);
 	if (!bh_index)
-		return -EIO;
+		goto read_end;
 	index = (struct ouichefs_file_index_block *)bh_index->b_data;
 
 	/* 
