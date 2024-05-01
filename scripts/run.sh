@@ -27,13 +27,14 @@ if [ ! -n "$seed" ]; then
   seed=$(date +%s)
 fi
   
-echo -e "\n\033[1mUsing kernel default read:\033[0m\n"
+echo -e "\n\033[1mUsing kernel default read/write:\033[0m\n"
 
 echo -n '0' > /sys/kernel/ouichefs/read_fn
 /share/test.o "$seed"
 /share/bench.o
 
-echo -e "\n\033[1mUsing simple read:\033[0m\n"
+rm -rf $TESTDIR/*
+echo -e "\n\033[1mUsing simple read/write:\033[0m\n"
 
 echo -n '1' > /sys/kernel/ouichefs/read_fn
 if [ ! -n "$1" ]; then

@@ -1,13 +1,5 @@
 #include "utils.h"
 
-void flush_cache()
-{
-	sync();
-	int fd = open("/proc/sys/vm/drop_caches", O_WRONLY);
-	write(fd, "1", 1);
-	close(fd);
-}
-
 void bench_write_read()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
@@ -17,9 +9,6 @@ void bench_write_read()
 	size_t len = 256;
 	char wbuf[len];
 	memset(wbuf, 1, len);
-
-	/* Avoid caching optimisation from previous code */
-	flush_cache();
 
 	for (int i = 0; i < MAX_FILESIZE; i += BLOCK_SIZE) {
 		for (int j = 0; j < BLOCK_SIZE; j += BLOCK_SIZE / 10) {

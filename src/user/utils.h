@@ -44,19 +44,37 @@ static inline char get_read_fn()
 #define TEST_SUCCESS 0
 #define TEST_FAIL 1
 
-static inline void init_seq_buff(char *buf, size_t len, int *pos) {
-    int written;
-    for (int i = 0; i < len - 1; ) {
-        size_t remaining = len - i;
-        written = snprintf(buf + i, remaining, "%d ", *pos);
-        if (written < 0 || (size_t)written >= remaining) {
-            break;
-        }
-        *pos += 1;
-        i += written;
-    }
-    // buf[len - 1] =  '\n';
-    // buf[len - 1] =  '\0';
+static inline void flush_cache(void)
+{
+	sync();
+	int fd = open("/proc/sys/vm/drop_caches", O_WRONLY);
+	write(fd, "1", 1);
+	close(fd);
+}
+
+static inline void init_seq_buff(char *buf, size_t len, int *counter)
+{
+	int offset = 0;
+	while (offset < len - 1) {
+		int written =
+			snprintf(buf + offset, len - offset, "%d ", *counter);
+		if (written < 0)
+			break;
+		offset += written;
+		*counter += 1;
+	}
+	buf[offset] = '\0';
+}
+
+static inline void init_seq_file(int fd)
+{
+	int counter = 0;
+	size_t len = BLOCK_SIZE;
+	char buf[len];
+	for (int i = 0; i < MAX_FILESIZE; i += len) {
+		init_seq_buff(buf, len, &counter);
+		write(fd, buf, len);
+	}
 }
 
 static inline void init_rand_buf(char *buf, size_t len)
@@ -75,20 +93,10 @@ static inline void init_rand_file(int fd)
 	}
 }
 
-static inline void init_seq_file(int fd)
-{
-	int pos = 0;
-	size_t len = BLOCK_SIZE;
-	char buf[len];
-	for (int i = 0; i < MAX_FILESIZE; i += len) {
-		init_seq_buff(buf, len, &pos);
-		write(fd, buf, len);
-	}
-}
 static inline void pr_buf(const char *buf, size_t len)
 {
 	printf("\"");
-	for (size_t i = 0; i < len; ++i) {
+	for (size_t i = 0; i < len; i++) {
 		if (isprint(buf[i])) {
 			printf("%c", buf[i]);
 		} else {
