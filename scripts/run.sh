@@ -30,6 +30,7 @@ fi
 echo -e "\n\033[1mUsing kernel default read/write:\033[0m\n"
 
 echo -n '0' > /sys/kernel/ouichefs/read_fn
+echo -n '0' > /sys/kernel/ouichefs/write_fn
 /share/test.o "$seed"
 /share/bench.o
 
@@ -37,6 +38,7 @@ rm $TESTDIR/*
 echo -e "\n\033[1mUsing simple read/write:\033[0m\n"
 
 echo -n '1' > /sys/kernel/ouichefs/read_fn
+echo -n '1' > /sys/kernel/ouichefs/write_fn
 if [ ! -n "$1" ]; then
   seed=$((seed + 1))
 fi

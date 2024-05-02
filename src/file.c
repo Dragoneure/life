@@ -23,7 +23,7 @@
  * true, allocate a new block on disk and map it.
  */
 int ouichefs_file_get_block(struct inode *inode, sector_t iblock,
-				   struct buffer_head *bh_result, int create)
+			    struct buffer_head *bh_result, int create)
 {
 	struct super_block *sb = inode->i_sb;
 	struct ouichefs_sb_info *sbi = OUICHEFS_SB(sb);
@@ -234,5 +234,5 @@ struct file_operations ouichefs_file_ops = {
 	.read = ouichefs_read,
 	.read_iter = generic_file_read_iter,
 	.write = ouichefs_write,
-        .write_iter = generic_file_write_iter
+	.write_iter = generic_file_write_iter
 };

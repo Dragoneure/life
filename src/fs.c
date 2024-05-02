@@ -78,6 +78,11 @@ static int __init ouichefs_init(void)
 		pr_err("sysfs_create_file() for read_fn_attr failed\n");
 		goto err_kobj;
 	}
+	ret = sysfs_create_file(kobj_sysfs, &write_fn_attr.attr);
+	if (ret) {
+		pr_err("sysfs_create_file() for write_fn_attr failed\n");
+		goto err_kobj;
+	}
 
 	pr_info("module loaded\n");
 	return 0;
