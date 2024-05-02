@@ -25,6 +25,7 @@ int check_begin(struct file *file, loff_t pos, size_t len)
 		nr_allocs = 0;
 	if (nr_allocs > sbi->nr_free_blocks)
 		return -ENOSPC;
+
 	return 0;
 }
 
@@ -38,11 +39,16 @@ void check_end(struct file *file)
 	uint32_t nr_blocks_old = inode->i_blocks;
 
 	/* Update inode metadata */
-	inode->i_blocks = inode->i_size / OUICHEFS_BLOCK_SIZE + 2;
+	inode->i_blocks = (inode->i_size / OUICHEFS_BLOCK_SIZE) + 1;
+	if ((inode->i_size % OUICHEFS_BLOCK_SIZE) != 0)
+		inode->i_blocks++;
 	inode->i_mtime = inode->i_ctime = current_time(inode);
 	mark_inode_dirty(inode);
 
 	/* If file is smaller than before, free unused blocks */
+	pr_info("nr_blocks_old: %u, i_blocks: %llu\n", nr_blocks_old,
+		inode->i_blocks);
+
 	if (nr_blocks_old > inode->i_blocks) {
 		int i;
 		struct buffer_head *bh_index;
@@ -83,7 +89,7 @@ int reserve_blocks(struct inode *inode, size_t size, loff_t *pos,
 	for (int bli = max(old_bln - 1, 0); bli < new_bln; bli++) {
 		int bno = get_free_block(OUICHEFS_SB(inode->i_sb));
 		if (!bno) {
-			pr_err("%s: get_free_block() failed\n", __func__);
+			pr_err("get_free_block() failed\n");
 			return 1;
 		}
 
@@ -92,7 +98,6 @@ int reserve_blocks(struct inode *inode, size_t size, loff_t *pos,
 
 		struct buffer_head *bh_data;
 		bh_data = sb_bread(inode->i_sb, bno);
-
 		mark_buffer_dirty(bh_data);
 		sync_dirty_buffer(bh_data);
 		brelse(bh_data);
@@ -107,8 +112,12 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 	struct inode *inode = file->f_inode;
 	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
 	struct ouichefs_file_index_block *index;
-	struct buffer_head *bh_index, *bh_data;
+	struct buffer_head *bh_index = NULL, *bh_data = NULL;
 	size_t remaining_write = size;
+	size_t writen = 0;
+
+	if (check_begin(file, *pos, size) < 0)
+		goto write_end;
 
 	/* Read index block from disk */
 	bh_index = sb_bread(inode->i_sb, ci->index_block);
@@ -137,7 +146,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 		uint32_t bno = index->blocks[logical_block_index];
 		bh_data = sb_bread(inode->i_sb, bno);
 		if (!bh_data)
-			goto write_end;
+			goto free_bh_index;
 
 		/* Available size between the cursor and the end of the block */
 		size_t available_size = OUICHEFS_BLOCK_SIZE - logical_pos;
@@ -146,7 +155,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 		if (available_size <= 0)
 			goto free_bh_data;
 
-		/* Do not read more than what's available and asked */
+		/* Do not write more than what's available and asked */
 		size_t len = min(available_size, remaining_write);
 		char *block = (char *)bh_data->b_data;
 
@@ -166,18 +175,23 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 		brelse(bh_data);
 	}
 
-	goto write_end;
+	goto free_bh_index;
 
 free_bh_data:
 	brelse(bh_data);
 
-write_end:
+free_bh_index:
+	mark_buffer_dirty(bh_index);
+	sync_dirty_buffer(bh_index);
 	brelse(bh_index);
 
-	size_t readen = size - remaining_write;
-	*pos += readen;
+write_end:
+	writen = size - remaining_write;
+	*pos += writen;
 
-	return readen;
+	check_end(file);
+
+	return writen;
 }
 
 ssize_t ouichefs_write_test(struct file *file, const char __user *buff,
