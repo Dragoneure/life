@@ -19,7 +19,6 @@ int test_simple_file_write()
 int test_write_read()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
-	init_seq_file(fd);
 
 	size_t pos = lseek(fd, BLOCK_SIZE - 5, SEEK_SET);
 	char wbuf[] = "Hello cruel world!\n";
@@ -86,17 +85,6 @@ int test_insert()
 	lseek(fd, pos - len, SEEK_SET);
 	for (int i = 0; i < 3; i++)
 		read(fd, rbuf[i], len);
-
-	for (int i = 0; i < 3; i++) {
-		pr_buf(prev_rbuf[i], len);
-		printf("\n");
-	}
-
-	printf("\nnew content: \n");
-	for (int i = 0; i < 3; i++) {
-		pr_buf(rbuf[i], len);
-		printf("\n");
-	}
 
 	ASSERT_EQ_BUF(rbuf[0], prev_rbuf[0], len);
 	ASSERT_EQ_BUF(rbuf[1], wbuf, len);
