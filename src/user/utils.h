@@ -35,6 +35,22 @@ static inline char get_read_fn()
 	return read_fn;
 }
 
+static inline void set_write_fn(char write_fn)
+{
+	int fd = open("/sys/kernel/ouichefs/read_fn", O_WRONLY);
+	write(fd, &write_fn, 1);
+	close(fd);
+}
+
+static inline char get_write_fn()
+{
+	int fd = open("/sys/kernel/ouichefs/read_fn", O_RDONLY);
+	char write_fn;
+	read(fd, &write_fn, 1);
+	close(fd);
+	return write_fn;
+}
+
 /* Test utilities */
 
 #define ANSI_GREEN "\x1b[32m"
@@ -122,6 +138,7 @@ static inline void pr_buf(const char *buf, size_t len)
 #define RUN_TEST(test_name, ...)                                          \
 	do {                                                              \
 		int old_read_fn = get_read_fn();                          \
+		int old_write_fn = get_write_fn();                        \
 		printf("RUNNING %s\n", #test_name);                       \
 		if (test_name(__VA_ARGS__) == TEST_SUCCESS) {             \
 			printf("%s ... " ANSI_GREEN "OK" ANSI_RESET "\n", \
@@ -131,6 +148,7 @@ static inline void pr_buf(const char *buf, size_t len)
 			       __func__);                                 \
 		}                                                         \
 		set_read_fn(old_read_fn);                                 \
+		set_write_fn(old_write_fn);                               \
 	} while (0)
 
 #define ASSERT_EQ(actual, expected)                                           \

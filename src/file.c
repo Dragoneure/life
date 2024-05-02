@@ -15,14 +15,15 @@
 
 #include "ouichefs.h"
 #include "bitmap.h"
+#include "write.h"
 
 /*
  * Map the buffer_head passed in argument with the iblock-th block of the file
  * represented by inode. If the requested block is not allocated and create is
  * true, allocate a new block on disk and map it.
  */
-static int ouichefs_file_get_block(struct inode *inode, sector_t iblock,
-				   struct buffer_head *bh_result, int create)
+int ouichefs_file_get_block(struct inode *inode, sector_t iblock,
+			    struct buffer_head *bh_result, int create)
 {
 	struct super_block *sb = inode->i_sb;
 	struct ouichefs_sb_info *sbi = OUICHEFS_SB(sb);
@@ -232,5 +233,6 @@ struct file_operations ouichefs_file_ops = {
 	.llseek = generic_file_llseek,
 	.read = ouichefs_read,
 	.read_iter = generic_file_read_iter,
+	.write = ouichefs_write,
 	.write_iter = generic_file_write_iter
 };
