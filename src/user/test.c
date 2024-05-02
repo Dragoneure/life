@@ -1,14 +1,15 @@
 #include "utils.h"
-#include <fcntl.h>
 
 int test_write_read()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+	init_seq_file(fd);
 
 	size_t pos = lseek(fd, BLOCK_SIZE - 5, SEEK_SET);
 	char wbuf[] = "Hello cruel world!\n";
 	size_t len = strlen(wbuf) + 1;
 	write(fd, wbuf, len);
+
 	char rbuf[len];
 	lseek(fd, pos, SEEK_SET);
 	read(fd, rbuf, len);
@@ -17,20 +18,20 @@ int test_write_read()
 	return TEST_SUCCESS;
 }
 
-int test_rand_read(int read1, int read2)
+int test_rand_read()
 {
-	int read_fn[] = { read1, read2 };
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
 	init_rand_file(fd);
+	flush_cache();
 
-	size_t len = 256;
+	size_t len = BLOCK_SIZE * 10;
 	int round = 100;
 	char expect[2][len];
 	size_t readen[2];
 
 	for (int i = 0; i < round; i++) {
 		size_t rand_pos = rand() % MAX_FILESIZE;
-		size_t rand_len = len;
+		size_t rand_len = rand() % len;
 
 		set_read_fn(DEFAULT_READ);
 		lseek(fd, rand_pos, SEEK_SET);
@@ -74,12 +75,6 @@ int test_insert()
 	ASSERT_EQ_BUF(rbuf[1], wbuf, len);
 	ASSERT_EQ_BUF(rbuf[2], prev_rbuf[2], len);
 
-	for (int i = 0; i < 3; i++) {
-		pr_test("rbuf content: ");
-		pr_buf(rbuf[i], len);
-		printf("\n");
-	}
-
 	return TEST_SUCCESS;
 }
 
@@ -97,7 +92,7 @@ int check_write_end(int fd, size_t end_pos)
 
 	lseek(fd, end_pos - end_offset, SEEK_SET);
 	ASSERT_EQ(read(fd, rbuf, len), end_offset);
-	ASSERT_EQ_BUF(rbuf, &wbuf[len - end_offset], end_offset)
+	ASSERT_EQ_BUF(rbuf, &wbuf[len - end_offset], end_offset);
 
 	return TEST_SUCCESS;
 }
@@ -114,6 +109,18 @@ int test_write_block_end()
 	return check_write_end(fd, MAX_FILESIZE - (BLOCK_SIZE * 4) - 42);
 }
 
+int test_empty_file()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+	lseek(fd, BLOCK_SIZE * 4 + 32, SEEK_SET);
+
+	size_t len = 32;
+	char rbuf[len];
+	ASSERT_EQ(read(fd, rbuf, len), 0L);
+
+	return TEST_SUCCESS;
+}
+
 int main(int argc, char **argv)
 {
 	int seed = 42;
@@ -126,9 +133,10 @@ int main(int argc, char **argv)
 
 	RUN_TEST(test_write_read);
 	RUN_TEST(test_insert);
-	RUN_TEST(test_rand_read, 1, 2);
+	RUN_TEST(test_rand_read);
 	RUN_TEST(test_write_filesize_end);
 	RUN_TEST(test_write_block_end);
+	RUN_TEST(test_empty_file);
 
 	return 0;
 }
