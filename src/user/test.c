@@ -87,6 +87,17 @@ int test_insert()
 	for (int i = 0; i < 3; i++)
 		read(fd, rbuf[i], len);
 
+	for (int i = 0; i < 3; i++) {
+		pr_buf(prev_rbuf[i], len);
+		printf("\n");
+	}
+
+	printf("\nnew content: \n");
+	for (int i = 0; i < 3; i++) {
+		pr_buf(rbuf[i], len);
+		printf("\n");
+	}
+
 	ASSERT_EQ_BUF(rbuf[0], prev_rbuf[0], len);
 	ASSERT_EQ_BUF(rbuf[1], wbuf, len);
 	ASSERT_EQ_BUF(rbuf[2], prev_rbuf[2], len);
