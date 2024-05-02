@@ -4,7 +4,7 @@
 #include "asm-generic/errno-base.h"
 #include "ouichefs.h"
 #include "ioctl.h"
-
+#include "bitmap.h"
 #include "linux/file.h"
 #include "linux/buffer_head.h"
 
@@ -31,12 +31,16 @@ static int ouichefs_ioctl_file_info(struct file *file,
 	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
 	struct ouichefs_file_index_block *index = NULL;
 	struct buffer_head *bh_index = NULL;
-
+	uint32_t size_block;
+	uint32_t wasted = 0;
+	uint32_t block;
+	uint32_t nb_partial_block = 0;
+	uint32_t total_waste = 0;
 	pr_info("File information:\n"
 		"\tfd: %u\n"
 		"\tsize: %lld\n"
 		"\tblocks number: %llu\n"
-		"\tblocks: ",
+		"\tblocks: \n",
 		fd, inode->i_size, inode->i_blocks);
 
 	/* Read index block from disk */
@@ -48,15 +52,24 @@ static int ouichefs_ioctl_file_info(struct file *file,
 	}
 	index = (struct ouichefs_file_index_block *)bh_index->b_data;
 
-	pr_cont("[");
-	for (int i = 0; i < inode->i_blocks - 2; i++) {
-		pr_cont("%u", index->blocks[i]);
-		if (i < inode->i_blocks - 3)
+	for (int i = 0; i < inode->i_blocks - 1; i++) {
+		block = index->blocks[i];
+		size_block = get_block_size(block);
+		wasted = OUICHEFS_BLOCK_SIZE - size_block;
+		total_waste += wasted;
+		if (wasted != 0)
+			nb_partial_block++;
+
+		pr_cont("%u:%u", get_block_number(block), size_block);
+		if (i < inode->i_blocks - 2)
 			pr_cont(", ");
 		if (i % 10 == 9)
 			pr_cont("\n");
 	}
-	pr_cont("]\n");
+
+	pr_cont("\n\twasted: %d\n"
+		"\tpartial block: %d\n",
+		total_waste, nb_partial_block);
 
 	brelse(bh_index);
 

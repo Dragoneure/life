@@ -104,4 +104,25 @@ static inline void put_block(struct ouichefs_sb_info *sbi, uint32_t bno)
 	pr_debug("%s:%d: freed block %u\n", __func__, __LINE__, bno);
 }
 
+static inline int get_block_size(int block)
+{
+	return (block & MASK_BLOCK_SIZE) >> 20;
+}
+
+static inline int get_block_number(int block)
+{
+	return (block & MASK_BLOCK_NUM);
+}
+
+static inline void set_block_size(int *block, int size)
+{
+	size = size << 20;
+	*block |= size;
+}
+
+static inline void set_block_number(int *block, int bno)
+{
+	*block |= bno;
+}
+
 #endif /* _OUICHEFS_BITMAP_H */
