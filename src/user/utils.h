@@ -9,8 +9,32 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+
 #define BLOCK_SIZE (1 << 12) /* 4 KiB */
 #define MAX_FILESIZE (1 << 22) /* 4 MiB */
+
+/* Change ouichefs read and write function using sysfs */
+
+#define DEFAULT_READ '0'
+#define SIMPLE_READ '1'
+
+static inline void set_read_fn(char read_fn)
+{
+	int fd = open("/sys/kernel/ouichefs/read_fn", O_WRONLY);
+	write(fd, &read_fn, 1);
+	close(fd);
+}
+
+static inline char get_read_fn()
+{
+	int fd = open("/sys/kernel/ouichefs/read_fn", O_RDONLY);
+	char read_fn;
+	read(fd, &read_fn, 1);
+	close(fd);
+	return read_fn;
+}
+
+/* Test utilities */
 
 #define ANSI_GREEN "\x1b[32m"
 #define ANSI_RED "\x1b[31m"
@@ -60,14 +84,16 @@ static inline void pr_buf(const char *buf, size_t len)
 
 #define RUN_TEST(test_name, ...)                                          \
 	do {                                                              \
+		int old_read_fn = get_read_fn();                          \
 		printf("RUNNING %s\n", #test_name);                       \
-		if (test_name(__VA_ARGS__) == 0) {                        \
+		if (test_name(__VA_ARGS__) == TEST_SUCCESS) {             \
 			printf("%s ... " ANSI_GREEN "OK" ANSI_RESET "\n", \
 			       #test_name);                               \
 		} else {                                                  \
 			printf("%s ... " ANSI_RED "FAIL" ANSI_RESET "\n", \
 			       __func__);                                 \
 		}                                                         \
+		set_read_fn(old_read_fn);                                 \
 	} while (0)
 
 #define ASSERT_EQ(actual, expected)                                           \
@@ -87,6 +113,8 @@ static inline void pr_buf(const char *buf, size_t len)
 		printf("\n");                                                \
 		return TEST_FAIL;                                            \
 	}
+
+/* Time utilities for benchmarking */
 
 struct time_data {
 	struct timespec start;

@@ -30,11 +30,16 @@ int test_rand_read(int read1, int read2)
 
 	for (int i = 0; i < round; i++) {
 		size_t rand_pos = rand() % MAX_FILESIZE;
-		// TODO: set first and second read fn
+		size_t rand_len = len;
+
+		set_read_fn(DEFAULT_READ);
 		lseek(fd, rand_pos, SEEK_SET);
-		readen[0] = read(fd, expect[0], len);
+		readen[0] = read(fd, expect[0], rand_len);
+
+		set_read_fn(SIMPLE_READ);
 		lseek(fd, rand_pos, SEEK_SET);
-		readen[1] = read(fd, expect[1], len);
+		readen[1] = read(fd, expect[1], rand_len);
+
 		ASSERT_EQ(readen[0], readen[1]);
 		ASSERT_EQ_BUF(expect[0], expect[1], readen[0]);
 	}
@@ -78,32 +83,52 @@ int test_insert()
 	return TEST_SUCCESS;
 }
 
-int test_write_end()
+int check_write_end(int fd, size_t end_pos)
 {
-	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
 	char wbuf[] =
 		"Riding on a pancake spaceship, the syrupy crew soared through galaxies.";
 	size_t len = strlen(wbuf);
 
-	lseek(fd, MAX_FILESIZE - len, SEEK_SET);
+	lseek(fd, end_pos - len, SEEK_SET);
 	ASSERT_EQ(write(fd, wbuf, len), len);
 
 	char rbuf[len];
 	size_t end_offset = 16;
 
-	lseek(fd, MAX_FILESIZE - end_offset, SEEK_SET);
+	lseek(fd, end_pos - end_offset, SEEK_SET);
 	ASSERT_EQ(read(fd, rbuf, len), end_offset);
 	ASSERT_EQ_BUF(rbuf, &wbuf[len - end_offset], end_offset)
 
 	return TEST_SUCCESS;
 }
 
+int test_write_filesize_end()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+	return check_write_end(fd, MAX_FILESIZE);
+}
+
+int test_write_block_end()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+	return check_write_end(fd, MAX_FILESIZE - (BLOCK_SIZE * 4) - 42);
+}
+
 int main(int argc, char **argv)
 {
-	srand(42);
+	int seed = 42;
+	/* Use the provided seed */
+	if (argc > 1)
+		seed = atoi(argv[1]);
+
+	srand(seed);
+	pr_test("Seed used: %d\n", seed);
+
 	RUN_TEST(test_write_read);
 	RUN_TEST(test_insert);
 	RUN_TEST(test_rand_read, 1, 2);
-	RUN_TEST(test_write_end);
+	RUN_TEST(test_write_filesize_end);
+	RUN_TEST(test_write_block_end);
+
 	return 0;
 }
