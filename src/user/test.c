@@ -20,12 +20,12 @@ int test_write_read()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
 
-	SHOW_FILE_INFO();
-
 	size_t pos = lseek(fd, BLOCK_SIZE - 5, SEEK_SET);
 	char wbuf[] = "Hello cruel world!\n";
 	size_t len = strlen(wbuf) + 1;
 	write(fd, wbuf, len);
+
+	SHOW_FILE_INFO(fd);
 
 	char rbuf[len];
 	lseek(fd, pos, SEEK_SET);

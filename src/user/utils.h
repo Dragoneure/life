@@ -192,14 +192,11 @@ struct time_data {
 
 /* Ioctl commands */
 
-#define SHOW_FILE_INFO()                                       \
+#define SHOW_FILE_INFO(fd)                                     \
 	do {                                                   \
-		int fd = open("/dev/ouichefs-dev", O_RDONLY);  \
-		struct ouichefs_file_info file_info;           \
-		ioctl(fd, OUICHEFS_IOC_FILE_INFO, &file_info); \
-		pr_test("File info: \n"                        \
-			"\tfoo=%d\n",                          \
-			file_info.foo);                        \
+		int copy = fd;\
+		int dev_fd = open("/dev/ouichefs-dev", O_RDONLY);  \
+		ioctl(dev_fd, OUICHEFS_IOC_FILE_INFO, &copy); \
 	} while (0)
 
 #endif /* UTILS_H */
