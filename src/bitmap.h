@@ -7,6 +7,7 @@
 #ifndef _OUICHEFS_BITMAP_H
 #define _OUICHEFS_BITMAP_H
 
+#include "linux/fs.h"
 #include <linux/bitmap.h>
 #include "ouichefs.h"
 
@@ -106,7 +107,13 @@ static inline void put_block(struct ouichefs_sb_info *sbi, uint32_t bno)
 
 static inline int get_block_size(int block)
 {
-	return (block & MASK_BLOCK_SIZE) >> 20;
+	int temp = block & MASK_BLOCK_SIZE;
+	/* block_size = 0 means the block is full
+	 * because we cannot encode BLOCK_SIZE on 12 bits
+	 */
+	if (temp == 0)
+		return BLOCK_SIZE;
+	return temp >> 20;
 }
 
 static inline int get_block_number(int block)
@@ -116,13 +123,15 @@ static inline int get_block_number(int block)
 
 static inline void set_block_size(int *block, int size)
 {
-	size = size << 20;
-	*block |= size;
+	*block &= ~MASK_BLOCK_SIZE;
+	if (size < BLOCK_SIZE)
+		*block |= (size << 20);
 }
 
 static inline void set_block_number(int *block, int bno)
 {
-	*block |= bno;
+	int temp = *block & (~MASK_BLOCK_NUM);
+	*block = temp | bno;
 }
 
 #endif /* _OUICHEFS_BITMAP_H */
