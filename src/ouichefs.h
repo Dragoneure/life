@@ -96,6 +96,10 @@ int ouichefs_init_inode_cache(void);
 void ouichefs_destroy_inode_cache(void);
 struct inode *ouichefs_iget(struct super_block *sb, unsigned long ino);
 
+/*block function*/
+int ouichefs_file_get_block(struct inode *inode, sector_t iblock,
+				   struct buffer_head *bh_result, int create);
+
 /* file functions */
 extern struct file_operations ouichefs_file_ops;
 extern const struct file_operations ouichefs_dir_ops;
