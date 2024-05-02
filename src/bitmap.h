@@ -112,7 +112,7 @@ static inline int get_block_size(int block)
 	 * because we cannot encode BLOCK_SIZE on 12 bits
 	 */
 	if (temp == 0)
-		return BLOCK_SIZE;
+		return OUICHEFS_BLOCK_SIZE;
 	return temp >> 20;
 }
 
@@ -124,7 +124,7 @@ static inline int get_block_number(int block)
 static inline void set_block_size(int *block, int size)
 {
 	*block &= ~MASK_BLOCK_SIZE;
-	if (size < BLOCK_SIZE)
+	if (size < OUICHEFS_BLOCK_SIZE)
 		*block |= (size << 20);
 }
 
