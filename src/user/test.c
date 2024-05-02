@@ -1,5 +1,21 @@
 #include "utils.h"
 
+int test_simple_file_write()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+
+	char wbuf[] = "Hello cruel world!\n";
+	size_t len = strlen(wbuf) + 1;
+	write(fd, wbuf, len);
+
+	char rbuf[len];
+	lseek(fd, 0, SEEK_SET);
+	read(fd, rbuf, len);
+	ASSERT_EQ_BUF(rbuf, wbuf, len);
+
+	return TEST_SUCCESS;
+}
+
 int test_write_read()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
@@ -131,6 +147,7 @@ int main(int argc, char **argv)
 	srand(seed);
 	pr_test("Seed used: %d\n", seed);
 
+	RUN_TEST(test_simple_file_write);
 	RUN_TEST(test_write_read);
 	RUN_TEST(test_insert);
 	RUN_TEST(test_rand_read);
