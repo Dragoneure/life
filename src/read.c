@@ -18,7 +18,7 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 		goto read_end;
 	index = (struct ouichefs_file_index_block *)bh_index->b_data;
 
-	/* 
+	/*
 	 * Get the size of the last block to read. Needed to manage file
 	 * sizes that are not multiple of BLOCK_SIZE.
 	 */

@@ -77,7 +77,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 	/* Allocate needed blocks */
 	reserve_blocks(inode, size, pos, index);
 
-	/* 
+	/*
 	 * Get the size of the last block to write. Needed to manage file
 	 * sizes that are not multiple of BLOCK_SIZE.
 	 */
