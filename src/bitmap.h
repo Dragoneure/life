@@ -105,8 +105,16 @@ static inline void put_block(struct ouichefs_sb_info *sbi, uint32_t bno)
 	pr_debug("%s:%d: freed block %u\n", __func__, __LINE__, bno);
 }
 
+
+static inline int get_block_number(int block)
+{
+	return (block & MASK_BLOCK_NUM);
+}
 static inline int get_block_size(int block)
 {
+
+	if( get_block_number(block) == 0)
+		return 0;
 	int temp = block & MASK_BLOCK_SIZE;
 	/* block_size = 0 means the block is full
 	 * because we cannot encode BLOCK_SIZE on 12 bits
@@ -114,11 +122,6 @@ static inline int get_block_size(int block)
 	if (temp == 0)
 		return OUICHEFS_BLOCK_SIZE;
 	return temp >> 20;
-}
-
-static inline int get_block_number(int block)
-{
-	return (block & MASK_BLOCK_NUM);
 }
 
 static inline void set_block_size(int *block, int size)
@@ -132,6 +135,20 @@ static inline void set_block_number(int *block, int bno)
 {
 	int temp = *block & (~MASK_BLOCK_NUM);
 	*block = temp | bno;
+}
+static inline void substract_block_size(int *block, int value)
+{
+	/*Still need to fix if new_size == 0*/
+	int initial_size = get_block_size(*block);
+	int new_size = initial_size - value;
+	set_block_size(block, new_size);
+}
+
+static inline void add_block_size(int *block, int value)
+{
+	int initial_size = get_block_size(*block);
+	int new_size = initial_size + value;
+	set_block_size(block, new_size);
 }
 
 #endif /* _OUICHEFS_BITMAP_H */
