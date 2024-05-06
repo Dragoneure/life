@@ -25,6 +25,8 @@ int test_write_read()
 	size_t len = strlen(wbuf) + 1;
 	write(fd, wbuf, len);
 
+	SHOW_FILE_INFO(fd);
+
 	char rbuf[len];
 	lseek(fd, pos, SEEK_SET);
 	read(fd, rbuf, len);

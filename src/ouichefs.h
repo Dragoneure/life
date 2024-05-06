@@ -18,6 +18,9 @@
 #define OUICHEFS_FILENAME_LEN 28
 #define OUICHEFS_MAX_SUBFILES 128
 
+#define MASK_BLOCK_SIZE 0xfff00000
+#define MASK_BLOCK_NUM  0x000fffff
+
 /*
  * ouiche_fs partition layout
  *
@@ -87,6 +90,9 @@ struct ouichefs_dir_block {
 		char filename[OUICHEFS_FILENAME_LEN];
 	} files[OUICHEFS_MAX_SUBFILES];
 };
+
+/* ioctl commands */
+extern struct file_operations ouichefs_ioctl_ops;
 
 /* superblock functions */
 int ouichefs_fill_super(struct super_block *sb, void *data, int silent);

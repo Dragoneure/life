@@ -49,6 +49,8 @@ static struct file_system_type ouichefs_file_system_type = {
 	.next = NULL,
 };
 
+static int chr_major;
+
 static int __init ouichefs_init(void)
 {
 	int ret;
@@ -65,8 +67,6 @@ static int __init ouichefs_init(void)
 		goto err_inode;
 	}
 
-	/* sysfs */
-
 	kobj_sysfs = kobject_create_and_add("ouichefs", kernel_kobj);
 	if (!kobj_sysfs) {
 		pr_err("kobject_create_and_add() failed\n");
@@ -76,18 +76,26 @@ static int __init ouichefs_init(void)
 	ret = sysfs_create_file(kobj_sysfs, &read_fn_attr.attr);
 	if (ret) {
 		pr_err("sysfs_create_file() for read_fn_attr failed\n");
-		goto err_kobj;
+		goto free_kobj;
 	}
 	ret = sysfs_create_file(kobj_sysfs, &write_fn_attr.attr);
 	if (ret) {
 		pr_err("sysfs_create_file() for write_fn_attr failed\n");
-		goto err_kobj;
+		goto free_kobj;
 	}
+
+	ret = register_chrdev(0, "ouichefs-dev", &ouichefs_ioctl_ops);
+	if (ret < 0) {
+		pr_err("chrdev registration failed\n");
+		goto free_kobj;
+	}
+	chr_major = ret;
+	pr_info("chrdev registered with major %d\n", chr_major);
 
 	pr_info("module loaded\n");
 	return 0;
 
-err_kobj:
+free_kobj:
 	kobject_put(kobj_sysfs);
 err_inode:
 	ouichefs_destroy_inode_cache();
@@ -99,14 +107,15 @@ static void __exit ouichefs_exit(void)
 {
 	int ret;
 
+	kobject_put(kobj_sysfs);
+
+	unregister_chrdev(chr_major, "ouichefs-dev");
+
 	ret = unregister_filesystem(&ouichefs_file_system_type);
 	if (ret)
 		pr_err("unregister_filesystem() failed\n");
 
 	ouichefs_destroy_inode_cache();
-
-	/* sysfs */
-	kobject_put(kobj_sysfs);
 
 	pr_info("module unloaded\n");
 }

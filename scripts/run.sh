@@ -11,6 +11,13 @@
 # load ouichefs
 insmod /share/ouichefs.ko
 
+# load device
+DEVICE=ouichefs-dev
+MAJOR=$(cat /proc/devices | grep "$DEVICE")
+MAJOR=($MAJOR)
+rm -f /dev/$MAJOR
+mknod /dev/$DEVICE c $MAJOR 0
+
 # mount a ouichefs test directory
 TESTDIR=~/tests-ouichefs
 if [ ! -d "$TESTDIR" ]; then
@@ -48,6 +55,7 @@ fi
 cd ~
 
 # cleanup
+rm -f /dev/$MAJOR
 umount $TESTDIR
 rm -rf $TESTDIR
 rmmod ouichefs
