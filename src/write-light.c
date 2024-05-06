@@ -43,6 +43,51 @@ int reserve_blocks_wli(struct inode *inode, int bn_insertion,
 
 	return 0;
 }
+int write_write(int logical_block_index, int logical_pos, int pos, int size,
+		struct inode *inode, struct ouichefs_sb_info *sbi,
+		struct ouichefs_file_index_block *index)
+{
+	/*
+	 * Amount of data to be copied from the block of insertion
+	 * to another block
+	 */
+	/*Problem if we insert at the begining of a block!*/
+	/*Suggestion to resolve the problem : check if logical_pos == 0, we allocate just the right number of bloc for the data we insert*/
+	int to_copy = OUICHEFS_BLOCK_SIZE - logical_pos;
+	/*Amount of insert data to be writen into a new block*/
+	int to_write_nb = size - to_copy;
+
+	/* Check if the write can be completed (enough space?) */
+	if (pos + size > OUICHEFS_MAX_FILESIZE)
+		return -ENOSPC;
+
+	/* Check if we can allocate needed blocks */
+	size_t nr_allocs = ((to_write_nb) / OUICHEFS_BLOCK_SIZE) + 1;
+	if ((to_write_nb % OUICHEFS_BLOCK_SIZE) != 0)
+		nr_allocs++;
+	if (nr_allocs > sbi->nr_free_blocks ||
+	    ((nr_allocs + inode->i_blocks) > 1025))
+		return -ENOSPC;
+
+	/* Allocate needed blocks */
+	reserve_blocks_wli(inode, logical_block_index, nr_allocs, index);
+
+	/*Copy data after cursor's instertion to the new block*/
+	struct buffer_head *bh_data1 =
+		sb_bread(inode->i_sb,
+			 get_block_number(index->blocks[logical_block_index]));
+	struct buffer_head *bh_data2 = sb_bread(
+		inode->i_sb,
+		get_block_number(
+			index->blocks[logical_block_index + nr_allocs]));
+	memcpy(bh_data2->b_data, bh_data1->b_data + logical_pos, to_copy);
+	substract_block_size(&index->blocks[logical_block_index], to_copy);
+	set_block_size(&index->blocks[logical_block_index + nr_allocs],
+		       to_copy);
+	brelse(bh_data1);
+	brelse(bh_data2);
+	return 0;
+}
 
 ssize_t ouichefs_write_li(struct file *file, const char __user *buff,
 			  size_t size, loff_t *pos)
@@ -59,27 +104,6 @@ ssize_t ouichefs_write_li(struct file *file, const char __user *buff,
 	/* Cursor position inside the current block */
 	int logical_pos = (*pos) % OUICHEFS_BLOCK_SIZE;
 
-	/*
-	 * Amount of data to be copied from the block of insertion
-	 * to another block
-	 */
-	int to_copy = OUICHEFS_BLOCK_SIZE - logical_pos;
-
-	/*Amount of insert data to be writen into a new block*/
-	int to_write_nb = size - to_copy;
-
-	/* Check if the write can be completed (enough space?) */
-	if (*pos + size > OUICHEFS_MAX_FILESIZE)
-		return -ENOSPC;
-
-	/* Check if we can allocate needed blocks */
-	size_t nr_allocs = ((to_write_nb) / OUICHEFS_BLOCK_SIZE) + 1;
-	if ((to_write_nb % OUICHEFS_BLOCK_SIZE) != 0)
-		nr_allocs++;
-	if (nr_allocs > sbi->nr_free_blocks ||
-	    ((nr_allocs + inode->i_blocks) > 1025))
-		return -ENOSPC;
-
 	/* Read index block from disk */
 	bh_index = sb_bread(inode->i_sb, ci->index_block);
 	if (!bh_index)
@@ -87,8 +111,15 @@ ssize_t ouichefs_write_li(struct file *file, const char __user *buff,
 	index = (struct ouichefs_file_index_block *)bh_index->b_data;
 
 	/* Allocate needed blocks */
-	reserve_blocks_wli(inode, logical_block_index, nr_allocs, index);
+	/*For the write light insertion we don't use this one*/
+	//reserve_blocks(inode, size, pos, index);
 
+	/* Allocate the needed block
+	 * Write to new block the data we shrinked from the block 
+	 * we insert new data
+	 */
+	write_write(logical_block_index, logical_pos, *pos, size, inode, sbi,
+		    index);
 	/*
 	 * Get the size of the last block to write. Needed to manage file
 	 * sizes that are not multiple of BLOCK_SIZE.
@@ -130,7 +161,7 @@ ssize_t ouichefs_write_li(struct file *file, const char __user *buff,
 		logical_block_index += 1;
 		/* The cursor position will start at 0 in subsequent blocks */
 		logical_pos = 0;
-
+		add_block_size(&index->blocks[logical_block_index], len);
 		mark_buffer_dirty(bh_data);
 		sync_dirty_buffer(bh_data);
 		brelse(bh_data);
