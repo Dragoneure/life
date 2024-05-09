@@ -22,6 +22,7 @@
 #define MASK_BLOCK_NUM  0x0007ffff
 /* Flag = 0 : block empty */
 #define MASK_BLOCK_FLAG 0x80000000
+
 /*
  * ouiche_fs partition layout
  *
@@ -104,8 +105,8 @@ void ouichefs_destroy_inode_cache(void);
 struct inode *ouichefs_iget(struct super_block *sb, unsigned long ino);
 
 /*block function*/
-int ouichefs_file_get_block(struct inode *inode, sector_t iblock,
-			    struct buffer_head *bh_result, int create);
+int find_block_pos(loff_t *pos, struct ouichefs_file_index_block *index,
+		   int nb_blocks, int *block_index, int *logical_pos);
 
 /* file functions */
 extern struct file_operations ouichefs_file_ops;

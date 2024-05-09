@@ -22,8 +22,8 @@
  * represented by inode. If the requested block is not allocated and create is
  * true, allocate a new block on disk and map it.
  */
-int ouichefs_file_get_block(struct inode *inode, sector_t iblock,
-			    struct buffer_head *bh_result, int create)
+static int ouichefs_file_get_block(struct inode *inode, sector_t iblock,
+				   struct buffer_head *bh_result, int create)
 {
 	struct super_block *sb = inode->i_sb;
 	struct ouichefs_sb_info *sbi = OUICHEFS_SB(sb);
@@ -68,6 +68,32 @@ brelse_index:
 	brelse(bh_index);
 
 	return ret;
+}
+
+/*
+ * Find the logical block number and the logical position inside this block based on a list of block with their sizes
+ */
+int find_block_pos(loff_t *pos, struct ouichefs_file_index_block *index,
+		   int nb_blocks, int *block_index, int *logical_pos)
+{
+	int remaining_size = *pos;
+	int current_block = 0;
+	while (remaining_size) {
+		if (current_block == nb_blocks) {
+			block_index = NULL;
+			logical_pos = NULL;
+			return 1;
+		}
+		int taille_block = get_block_size(index->blocks[current_block]);
+		if ((remaining_size - taille_block) < 0) {
+			break;
+		}
+		remaining_size -= taille_block;
+		current_block++;
+	}
+	*block_index = current_block;
+	*logical_pos = remaining_size;
+	return 0;
 }
 
 /*
