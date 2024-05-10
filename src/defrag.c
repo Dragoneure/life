@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0
+#define pr_fmt(fmt) "%s:%s: " fmt, KBUILD_MODNAME, __func__
+
+#include "linux/buffer_head.h"
+#include <string.h>
 
 #include "bitmap.h"
-#include "linux/buffer_head.h"
 #include "ouichefs.h"
-#include <string.h>
 
 void update(struct inode *inode, struct ouichefs_file_index_block *index,
 	    int block_number, int size_start)
@@ -17,6 +19,9 @@ void update(struct inode *inode, struct ouichefs_file_index_block *index,
 	memcpy(bh_data1, buff, new_size);
 
 	set_block_size(index->blocks[block_number], new_size);
+	mark_buffer_dirty(bh_data1);
+	sync_dirty_buffer(bh_data1);
+	brelse(bh_data1);
 }
 
 void defrag_block(struct inode *inode, struct ouichefs_file_index_block *index)
@@ -40,6 +45,8 @@ void defrag_block(struct inode *inode, struct ouichefs_file_index_block *index)
 		current_block++;
 		next_block++;
 	}
+	inode->i_blocks = current_block + 1;
+	mark_inode_dirty(inode);
 }
 
 int defrag(struct file *file)
@@ -75,13 +82,20 @@ int defrag(struct file *file)
 			taille_block += to_copy;
 			remaining_size -= to_copy;
 
+			mark_buffer_dirty(bh_data1);
+			sync_dirty_buffer(bh_data1);
+			brelse(bh_data1);
+			mark_buffer_dirty(bh_data2);
+			sync_dirty_buffer(bh_data2);
+			brelse(bh_data2);
+
 			if (to_copy == taille_next_block) {
 				put_block(OUICHEFS_SB(inode->i_sb),
 					  index->blocks[next_block]);
 				index->blocks[next_block] = 0;
+			} else {
+				update(inode, index, next_block, to_copy);
 			}
-
-			update(inode, index, next_block, to_copy);
 			next_block++;
 		}
 		set_block_size(index->blocks[current_block], taille_block);
