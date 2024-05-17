@@ -9,10 +9,15 @@
 #include "bitmap.h"
 
 /*
+ * Normal write.
+ */
+
+/*
  * Pre-allocate blocks before writing.
  */
-int reserve_blocks(struct inode *inode, struct ouichefs_file_index_block *index,
-		   size_t new_file_size)
+int write_reserve_blocks(struct inode *inode,
+			 struct ouichefs_file_index_block *index,
+			 size_t new_file_size)
 {
 	int new_bln, iblock, bno;
 	int old_bln = inode->i_blocks - 1;
@@ -75,7 +80,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 
 	/* Allocate needed blocks */
 	new_file_size = *pos + size;
-	reserve_blocks(inode, index, new_file_size);
+	write_reserve_blocks(inode, index, new_file_size);
 
 	/*
 	 * Get the size of the last block to write. Needed to manage file
@@ -154,4 +159,25 @@ write_end:
 	*pos += written;
 
 	return written;
+}
+
+/*
+ * Write with insertion.
+ */
+
+ssize_t ouichefs_write_insert(struct file *file, const char __user *buff,
+			      size_t size, loff_t *pos)
+{
+	struct inode *inode = file->f_inode;
+	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
+	struct ouichefs_sb_info *sbi = OUICHEFS_SB(inode->i_sb);
+	struct ouichefs_file_index_block *index;
+	struct buffer_head *bh_index = NULL, *bh_data = NULL;
+	size_t remaining_write = size, written = 0, nr_allocs = 0,
+	       new_file_size = 0;
+	int last_block_size, nb_blocks, logical_block_index, logical_pos;
+	find_block_pos(*pos, index, nb_blocks, &logical_block_index,
+		       &logical_pos);
+	reserve_blocks_write_insert(inode, index, logical_pos,
+				    logical_block_index, size);
 }
