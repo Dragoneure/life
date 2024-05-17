@@ -7,9 +7,11 @@
 
 #define DEFAULT_READ '0'
 #define SIMPLE_READ '1'
+#define LIGHT_READ '2'
 
 #define DEFAULT_WRITE '0'
 #define SIMPLE_WRITE '1'
+#define LIGHT_WRITE '2'
 
 /* sysfs */
 
@@ -25,6 +27,9 @@ static ssize_t read_fn_store(struct kobject *kobj, struct kobj_attribute *attr,
 		break;
 	case SIMPLE_READ:
 		ouichefs_file_ops.read = ouichefs_read;
+		break;
+	case LIGHT_READ:
+		ouichefs_file_ops.read = ouichefs_light_read;
 		break;
 	default:
 		pr_err("Invalid read fn code\n");
@@ -50,6 +55,9 @@ static ssize_t write_fn_store(struct kobject *kobj, struct kobj_attribute *attr,
 		break;
 	case SIMPLE_WRITE:
 		ouichefs_file_ops.write = ouichefs_write;
+		break;
+	case LIGHT_WRITE:
+		ouichefs_file_ops.write = ouichefs_light_write;
 		break;
 	default:
 		pr_err("Invalid write fn code\n");
