@@ -110,35 +110,53 @@ static inline int get_block_number(int block)
 {
 	return (block & MASK_BLOCK_NUM);
 }
+
+/* Return 1  if empty and 0 otherwise*/
+static inline int block_isempty(int block)
+{
+	return ~(block & MASK_BLOCK_FLAG);
+}
 static inline int get_block_size(int block)
 {
 
-	if( get_block_number(block) == 0)
+	if (block_isempty(block))
 		return 0;
 	int temp = block & MASK_BLOCK_SIZE;
-	/* block_size = 0 means the block is full
-	 * because we cannot encode BLOCK_SIZE on 12 bits
-	 */
-	if (temp == 0)
-		return OUICHEFS_BLOCK_SIZE;
-	return temp >> 20;
+	return (temp >> 19) + 1;
 }
 
 static inline void set_block_size(int *block, int size)
 {
+	if (size > 4096)
+		size = 4096;
+	if (size > 0) 
+		*block |= MASK_BLOCK_FLAG;
+	else {
+		*block &= ~(MASK_BLOCK_FLAG | MASK_BLOCK_SIZE);
+		return;
+	} 
+		 
 	*block &= ~MASK_BLOCK_SIZE;
-	if (size < OUICHEFS_BLOCK_SIZE)
-		*block |= (size << 20);
+	/* Block size on 12 bits, cannot encode 4096 */
+	size--;
+	*block |= (size << 19);
+}
+
+static inline void set_empty_block(int *block)
+{
+	*block &= ~(MASK_BLOCK_SIZE);
+	*block &= ~(MASK_BLOCK_FLAG);
 }
 
 static inline void set_block_number(int *block, int bno)
 {
+
 	int temp = *block & (~MASK_BLOCK_NUM);
-	*block = temp | bno;
+	*block = (temp | bno);
 }
+
 static inline void substract_block_size(int *block, int value)
 {
-	/*Still need to fix if new_size == 0*/
 	int initial_size = get_block_size(*block);
 	int new_size = initial_size - value;
 	set_block_size(block, new_size);
