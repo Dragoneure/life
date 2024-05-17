@@ -105,17 +105,25 @@ static inline void put_block(struct ouichefs_sb_info *sbi, uint32_t bno)
 	pr_debug("%s:%d: freed block %u\n", __func__, __LINE__, bno);
 }
 
-
+/*
+ * Block partition index.
+ */
 static inline int get_block_number(int block)
 {
 	return (block & MASK_BLOCK_NUM);
 }
 
-/* Return 0 if empty and 1 otherwise*/
+/*
+ * Return 0 if empty and 1 otherwise.
+ */
 static inline int block_empty(int block)
 {
 	return (block & MASK_BLOCK_FLAG);
 }
+
+/*
+ * Size of a block, between 0 and 4096.
+ */
 static inline int get_block_size(int block)
 {
 
@@ -125,13 +133,17 @@ static inline int get_block_size(int block)
 	return (temp >> 19) + 1;
 }
 
+/*
+ * Set the size of a block, between 0 and 4096.
+ * Set the empty flag accordingly.
+ */
 static inline void set_block_size(int *block, int size)
 {
-	if (size > 4096)
-		size = 4096;
-	if (size > 0) 
+	size = max(size, 4096);
+
+	if (size > 0) {
 		*block |= MASK_BLOCK_FLAG;
-	else {
+	} else {
 		*block &= ~(MASK_BLOCK_FLAG | MASK_BLOCK_SIZE);
 		return;
 	} 
@@ -142,6 +154,9 @@ static inline void set_block_size(int *block, int size)
 	*block |= (size << 19);
 }
 
+/*
+ * Set the block partition index.
+ */
 static inline void set_block_number(int *block, int bno)
 {
 
@@ -149,17 +164,21 @@ static inline void set_block_number(int *block, int bno)
 	*block = (temp | bno);
 }
 
+/*
+ * Decreases the block size by a specified value.
+ */
 static inline void sub_block_size(int *block, int value)
 {
-	int initial_size = get_block_size(*block);
-	int new_size = initial_size - value;
+	int new_size = get_block_size(*block) - value;
 	set_block_size(block, new_size);
 }
 
+/*
+ * Increases the block size by a specified value.
+ */
 static inline void add_block_size(int *block, int value)
 {
-	int initial_size = get_block_size(*block);
-	int new_size = initial_size + value;
+	int new_size = get_block_size(*block) + value;
 	set_block_size(block, new_size);
 }
 
