@@ -15,7 +15,6 @@
 
 #include "ouichefs.h"
 #include "bitmap.h"
-#include "write.h"
 
 /*
  * Map the buffer_head passed in argument with the iblock-th block of the file
@@ -71,28 +70,33 @@ brelse_index:
 }
 
 /*
- * Find the logical block number and the logical position inside this block based on a list of block with their sizes
+ * Find the logical block number and the logical position inside this block
+ * based on a list of block with their sizes.
  */
 int find_block_pos(loff_t *pos, struct ouichefs_file_index_block *index,
 		   int nb_blocks, int *block_index, int *logical_pos)
 {
 	int remaining_size = *pos;
-	int current_block = 0;
+	int current_block = 0, block_size;
+
 	while (remaining_size) {
 		if (current_block == nb_blocks) {
 			block_index = NULL;
 			logical_pos = NULL;
 			return 1;
 		}
-		int taille_block = get_block_size(index->blocks[current_block]);
-		if ((remaining_size - taille_block) < 0) {
+
+		block_size = get_block_size(index->blocks[current_block]);
+		if ((remaining_size - block_size) < 0)
 			break;
-		}
-		remaining_size -= taille_block;
+
+		remaining_size -= block_size;
 		current_block++;
 	}
+
 	*block_index = current_block;
 	*logical_pos = remaining_size;
+
 	return 0;
 }
 

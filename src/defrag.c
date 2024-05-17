@@ -2,7 +2,6 @@
 #define pr_fmt(fmt) "%s:%s: " fmt, KBUILD_MODNAME, __func__
 
 #include "linux/buffer_head.h"
-#include <string.h>
 
 #include "bitmap.h"
 #include "ouichefs.h"
@@ -35,9 +34,8 @@ void defrag_block(struct inode *inode, struct ouichefs_file_index_block *index)
 			       index->blocks[next_block] == 0) {
 				next_block++;
 			}
-			if (next_block == inode->i_blocks) {
+			if (next_block == inode->i_blocks)
 				break;
-			}
 			index->blocks[current_block] =
 				index->blocks[next_block];
 			index->blocks[next_block] = 0;
@@ -54,14 +52,13 @@ int defrag(struct file *file)
 	struct inode *inode = file->f_inode;
 	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
 	struct ouichefs_file_index_block *index;
-	struct buffer_head *bh_index, *bh_data;
 	int current_block = 0;
 
 	while (current_block < inode->i_blocks - 1) {
 		int taille_block = get_block_size(index->blocks[current_block]);
-		if (taille_block == OUICHEFS_BLOCK_SIZE) {
+
+		if (taille_block == OUICHEFS_BLOCK_SIZE)
 			continue;
-		}
 
 		int remaining_size = OUICHEFS_BLOCK_SIZE - taille_block;
 		int next_block = current_block + 1;

@@ -42,7 +42,7 @@ static int ouichefs_ioctl_file_info(struct file *file,
 		"\tfd: %u\n"
 		"\tsize: %lld\n"
 		"\tblocks number: %llu\n"
-		"\tblocks: \n",
+		"\tblocks:\n",
 		fd, inode->i_size, inode->i_blocks);
 
 	/* Read index block from disk */
@@ -99,5 +99,5 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	return 0;
 }
 
-struct file_operations ouichefs_ioctl_ops = { .unlocked_ioctl =
-						      ouichefs_ioctl };
+const struct file_operations ouichefs_ioctl_ops = { .unlocked_ioctl =
+							    ouichefs_ioctl };

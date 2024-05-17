@@ -7,7 +7,6 @@
 #include "linux/uaccess.h"
 #include "ouichefs.h"
 #include "bitmap.h"
-#include "write.h"
 
 void move_to(struct ouichefs_file_index_block *index, int to, int from, int nb)
 {
@@ -23,13 +22,16 @@ int reserve_blocks_wli(struct inode *inode, int bn_insertion,
 		       struct ouichefs_file_index_block *index)
 {
 	int id_last_block = inode->i_blocks - 2;
+
 	move_to(index, id_last_block + nb_to_allocate, id_last_block,
 		nb_to_allocate);
+
 	for (int iblock = bn_insertion + 1;
 	     iblock < bn_insertion + 1 + nb_to_allocate; iblock++) {
 		/* Block already allocated */
 		if (index->blocks[iblock] != 0)
 			continue;
+
 		int bno = get_free_block(OUICHEFS_SB(inode->i_sb));
 
 		if (!bno) {
@@ -43,6 +45,7 @@ int reserve_blocks_wli(struct inode *inode, int bn_insertion,
 
 	return 0;
 }
+
 int write_write(int logical_block_index, int logical_pos, int pos, int size,
 		struct inode *inode, struct ouichefs_sb_info *sbi,
 		struct ouichefs_file_index_block *index)
@@ -63,6 +66,7 @@ int write_write(int logical_block_index, int logical_pos, int pos, int size,
 
 	/* Check if we can allocate needed blocks */
 	size_t nr_allocs = ((to_write_nb) / OUICHEFS_BLOCK_SIZE) + 1;
+
 	if ((to_write_nb % OUICHEFS_BLOCK_SIZE) != 0)
 		nr_allocs++;
 	if (nr_allocs > sbi->nr_free_blocks ||
@@ -115,7 +119,7 @@ ssize_t ouichefs_write_li(struct file *file, const char __user *buff,
 	//reserve_blocks(inode, size, pos, index);
 
 	/* Allocate the needed block
-	 * Write to new block the data we shrinked from the block 
+	 * Write to new block the data we shrinked from the block
 	 * we insert new data
 	 */
 	write_write(logical_block_index, logical_pos, *pos, size, inode, sbi,
