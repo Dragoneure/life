@@ -105,7 +105,7 @@ void ouichefs_destroy_inode_cache(void);
 struct inode *ouichefs_iget(struct super_block *sb, unsigned long ino);
 
 /* block function */
-int find_block_pos(loff_t *pos, struct ouichefs_file_index_block *index,
+int find_block_pos(loff_t pos, struct ouichefs_file_index_block *index,
 		   int nb_blocks, int *block_index, int *logical_pos);
 
 /* file functions */

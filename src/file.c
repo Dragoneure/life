@@ -72,20 +72,19 @@ brelse_index:
 /*
  * Find the logical block number and the logical position inside this block
  * based on a list of block with their sizes.
+ * Return 1 if nothing was found, otherwise 0.
  */
-int find_block_pos(loff_t *pos, struct ouichefs_file_index_block *index,
+int find_block_pos(loff_t pos, struct ouichefs_file_index_block *index,
 		   int nb_blocks, int *block_index, int *logical_pos)
 {
-	int remaining_size = *pos;
 	int current_block = 0, block_size;
+	int remaining_size = pos;
 
 	while (remaining_size) {
-		if (current_block == nb_blocks) {
-			block_index = NULL;
-			logical_pos = NULL;
+		if (current_block == nb_blocks)
 			return 1;
-		}
 
+		/* Cursor position reached */
 		block_size = get_block_size(index->blocks[current_block]);
 		if ((remaining_size - block_size) < 0)
 			break;
