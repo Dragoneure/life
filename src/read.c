@@ -114,7 +114,7 @@ ssize_t ouichefs_light_read(struct file *file, char __user *buff, size_t size,
 	int logical_block_index;
 	int logical_pos;
 
-	if (find_block_pos(pos, index, inode->i_blocks, &logical_block_index,
+	if (find_block_pos(*pos, index, inode->i_blocks, &logical_block_index,
 			   &logical_pos))
 		goto read_end;
 

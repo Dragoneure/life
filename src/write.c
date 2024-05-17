@@ -8,28 +8,27 @@
 #include "ouichefs.h"
 #include "bitmap.h"
 
-/*
- * Normal write.
- */
-
-/*
- * Pre-allocate blocks before writing.
- */
-int write_reserve_blocks(struct inode *inode,
-			 struct ouichefs_file_index_block *index,
-			 size_t new_file_size)
+/* Returns ceil(a/b) */
+static inline uint32_t idiv_ceil(uint32_t a, uint32_t b)
 {
-	int new_bln, iblock, bno;
-	int old_bln = inode->i_blocks - 1;
+	uint32_t ret = a / b;
+	if (a % b != 0)
+		return ret + 1;
+	return ret;
+}
 
-	/* Find the new number of blocks based on new file size. */
-	new_bln = new_file_size / OUICHEFS_BLOCK_SIZE;
-	if ((new_file_size % OUICHEFS_BLOCK_SIZE) != 0)
-		new_bln++;
+/*
+ * Allocate nb_blocks from a block index, update inode blocks number.
+ */
+int reserve_empty_blocks(struct inode *inode,
+			 struct ouichefs_file_index_block *index,
+			 int block_index, int nb_blocks)
+{
+	int bli, bno;
 
-	for (iblock = max(old_bln - 1, 0); iblock < new_bln; iblock++) {
+	for (bli = block_index; bli < nb_blocks; bli++) {
 		/* Block already allocated */
-		if (index->blocks[iblock] != 0)
+		if (index->blocks[bli] != 0)
 			continue;
 
 		/* Allocate a block by removing one from the free list */
@@ -39,11 +38,32 @@ int write_reserve_blocks(struct inode *inode,
 			return 1;
 		}
 
-		index->blocks[iblock] = bno;
+		index->blocks[bli] = bno;
 		inode->i_blocks++;
 	}
 
 	return 0;
+}
+
+/*
+ * Normal write.
+ */
+
+/*
+ * Pre-allocate blocks before writing.
+ * Return 1 in case of error.
+ */
+int reserve_write_blocks(struct inode *inode,
+			 struct ouichefs_file_index_block *index,
+			 size_t new_file_size)
+{
+	int new_bln;
+	int old_bln = inode->i_blocks - 1;
+
+	/* Find the new number of blocks based on new file size. */
+	new_bln = idiv_ceil(new_file_size, OUICHEFS_BLOCK_SIZE);
+
+	return reserve_empty_blocks(inode, index, max(old_bln - 1, 0), new_bln);
 }
 
 ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
@@ -80,7 +100,8 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 
 	/* Allocate needed blocks */
 	new_file_size = *pos + size;
-	write_reserve_blocks(inode, index, new_file_size);
+	if (reserve_write_blocks(inode, index, new_file_size))
+		goto write_end;
 
 	/*
 	 * Get the size of the last block to write. Needed to manage file
@@ -164,6 +185,16 @@ write_end:
 /*
  * Write with insertion.
  */
+
+/*
+ * Shift all blocks after block_index by nb_blocks to the right.
+ */
+void shift_blocks(struct ouichefs_file_index_block *index, int block_index,
+		  int nb_blocks)
+{
+	for (int bli = nb_blocks; bli > block_index; bli--)
+		index->blocks[bli + nb_blocks] = index->blocks[bli];
+}
 
 ssize_t ouichefs_write_insert(struct file *file, const char __user *buff,
 			      size_t size, loff_t *pos)
