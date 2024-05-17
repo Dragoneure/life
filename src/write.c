@@ -26,9 +26,9 @@ int reserve_empty_blocks(struct inode *inode,
 			 struct ouichefs_file_index_block *index,
 			 int block_index, int nb_blocks)
 {
-	int bli, bno;
+	uint32_t bli, bno;
 
-	for (bli = block_index; bli < nb_blocks; bli++) {
+	for (bli = block_index; bli < block_index + nb_blocks; bli++) {
 		/* Block already allocated */
 		if (index->blocks[bli] != 0)
 			continue;
@@ -40,7 +40,9 @@ int reserve_empty_blocks(struct inode *inode,
 			return 1;
 		}
 
-		index->blocks[bli] = bno;
+		set_block_number(&index->blocks[bli], bno);
+		set_block_size(&index->blocks[bli], 0);
+
 		inode->i_blocks++;
 	}
 
@@ -236,7 +238,7 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	struct buffer_head *bh_index = NULL, *bh_data = NULL;
 	size_t remaining_write = size, written = 0, nr_allocs = 0,
 	       new_file_size = 0, to_copy = 0;
-	int logical_block_index, logical_pos;
+	int logical_block_index, logical_pos, alloc_index_start;
 	bool move_old_content = 0;
 	ssize_t ret = 0;
 
@@ -268,8 +270,12 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	}
 
 	/* Pre-allocate memory after block index that we insert to. */
-	shift_blocks(index, logical_block_index + 1, nr_allocs);
-	reserve_empty_blocks(inode, index, logical_block_index + 1, nr_allocs);
+	alloc_index_start = 0;
+	if (inode->i_blocks - 1 > 0) {
+		alloc_index_start = logical_block_index + 1;
+		shift_blocks(index, logical_block_index + 1, nr_allocs);
+	}
+	reserve_empty_blocks(inode, index, alloc_index_start, nr_allocs);
 
 	/*
 	 * Move old content in logical block index to the last

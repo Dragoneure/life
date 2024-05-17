@@ -12,9 +12,12 @@ int test_write_insert_begin()
 	size_t len = strlen(wbuf);
 
 	write(fd, prev_write, prev_len);
+	SHOW_FILE_INFO(fd);
+	printf("\n\n");
 
 	lseek(fd, 0, SEEK_SET);
 	write(fd, wbuf, len);
+	SHOW_FILE_INFO(fd);
 
 	char rbuf[prev_len + len];
 

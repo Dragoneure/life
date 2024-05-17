@@ -123,7 +123,7 @@ ssize_t ouichefs_light_read(struct file *file, char __user *buff, size_t size,
 		char *block;
 
 		/* Read data block from disk */
-		bno = index->blocks[logical_block_index];
+		bno = get_block_number(index->blocks[logical_block_index]);
 		bh_data = sb_bread(inode->i_sb, bno);
 		if (!bh_data)
 			goto read_end;

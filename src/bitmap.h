@@ -126,7 +126,6 @@ static inline int block_empty(int block)
  */
 static inline int get_block_size(int block)
 {
-
 	if (block_empty(block) == 0)
 		return 0;
 	int temp = block & MASK_BLOCK_SIZE;
@@ -139,8 +138,7 @@ static inline int get_block_size(int block)
  */
 static inline void set_block_size(int *block, int size)
 {
-	size = max(size, 4096);
-
+	size = min(size, 4096);
 	if (size > 0) {
 		*block |= MASK_BLOCK_FLAG;
 	} else {
@@ -159,9 +157,8 @@ static inline void set_block_size(int *block, int size)
  */
 static inline void set_block_number(int *block, int bno)
 {
-
-	int temp = *block & (~MASK_BLOCK_NUM);
-	*block = (temp | bno);
+	*block &= (~MASK_BLOCK_NUM);
+	*block |= bno;
 }
 
 /*
