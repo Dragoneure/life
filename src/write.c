@@ -11,7 +11,9 @@
 /* Returns ceil(a/b) */
 static inline uint32_t idiv_ceil(uint32_t a, uint32_t b)
 {
-	uint32_t ret = a / b;
+	uint32_t ret;
+
+	ret = a / b;
 	if (a % b != 0)
 		return ret + 1;
 	return ret;
@@ -209,9 +211,9 @@ int move_old_content_to(struct ouichefs_file_index_block *index,
 	if (!bh_data_from || !bh_data_to)
 		return -EIO;
 
-	/* 
-	 * Move old content from logical pos in a new empty block. 
-	 * Update old and new block size. 
+	/*
+	 * Move old content from logical pos in a new empty block.
+	 * Update old and new block size.
 	 */
 	memcpy(bh_data_to->b_data, bh_data_from->b_data + logical_pos, to_copy);
 	sub_block_size(&index->blocks[block_index_from], to_copy);
@@ -269,9 +271,9 @@ ssize_t ouichefs_write_insert(struct file *file, const char __user *buff,
 	shift_blocks(index, logical_block_index + 1, nr_allocs);
 	reserve_empty_blocks(inode, index, logical_block_index + 1, nr_allocs);
 
-	/* 
-	 * Move old content in logical block index to the last 
-	 * pre-allocated block if needed. 
+	/*
+	 * Move old content in logical block index to the last
+	 * pre-allocated block if needed.
 	 */
 	if (move_old_content)
 		ret = move_old_content_to(index, inode->i_sb,
