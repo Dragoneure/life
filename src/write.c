@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 #define pr_fmt(fmt) "%s:%s: " fmt, KBUILD_MODNAME, __func__
 
 #include "linux/printk.h"
@@ -13,6 +14,7 @@ int reserve_blocks(struct inode *inode, size_t size, loff_t *pos,
 {
 	int old_bln = inode->i_blocks - 1;
 	int new_bln = inode->i_size / OUICHEFS_BLOCK_SIZE;
+
 	if ((inode->i_size % OUICHEFS_BLOCK_SIZE) > 0)
 		new_bln++;
 
@@ -22,6 +24,7 @@ int reserve_blocks(struct inode *inode, size_t size, loff_t *pos,
 			continue;
 
 		int bno = get_free_block(OUICHEFS_SB(inode->i_sb));
+
 		if (!bno) {
 			pr_err("get_free_block() failed\n");
 			return 1;
@@ -68,6 +71,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 
 	/* Update file size */
 	size_t new_file_size = *pos + size;
+
 	if (new_file_size > inode->i_size) {
 		inode->i_size = new_file_size;
 		inode->i_mtime = inode->i_ctime = current_time(inode);
@@ -77,11 +81,12 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 	/* Allocate needed blocks */
 	reserve_blocks(inode, size, pos, index);
 
-	/* 
+	/*
 	 * Get the size of the last block to write. Needed to manage file
 	 * sizes that are not multiple of BLOCK_SIZE.
 	 */
 	int last_block_size = inode->i_size % OUICHEFS_BLOCK_SIZE;
+
 	if (last_block_size == 0 && inode->i_size != 0)
 		last_block_size = OUICHEFS_BLOCK_SIZE;
 
@@ -94,12 +99,14 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 
 	while (remaining_write && (logical_block_index < nb_blocks)) {
 		uint32_t bno = index->blocks[logical_block_index];
+
 		bh_data = sb_bread(inode->i_sb, bno);
 		if (!bh_data)
 			goto free_bh_index;
 
 		/* Available size between the cursor and the end of the block */
 		size_t available_size = OUICHEFS_BLOCK_SIZE - logical_pos;
+
 		if (logical_block_index == nb_blocks - 1)
 			available_size = last_block_size - logical_pos;
 		if (available_size <= 0)

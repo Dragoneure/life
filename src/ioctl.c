@@ -1,4 +1,4 @@
-
+// SPDX-License-Identifier: GPL-2.0
 #define pr_fmt(fmt) "%s:%s: " fmt, KBUILD_MODNAME, __func__
 
 #include "asm-generic/errno-base.h"
@@ -21,6 +21,7 @@ static int ouichefs_ioctl_file_info(struct file *file,
 	}
 
 	struct file *user_file = fget(fd);
+
 	if (!user_file) {
 		ret = -EINVAL;
 		pr_err("invalid fd %d, file not found\n", fd);
@@ -36,6 +37,7 @@ static int ouichefs_ioctl_file_info(struct file *file,
 	uint32_t block;
 	uint32_t nb_partial_block = 0;
 	uint32_t total_waste = 0;
+
 	pr_info("File information:\n"
 		"\tfd: %u\n"
 		"\tsize: %lld\n"

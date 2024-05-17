@@ -18,9 +18,10 @@
 #define OUICHEFS_FILENAME_LEN 28
 #define OUICHEFS_MAX_SUBFILES 128
 
-#define MASK_BLOCK_SIZE 0xfff00000
-#define MASK_BLOCK_NUM  0x000fffff
-
+#define MASK_BLOCK_SIZE 0x7ff80000
+#define MASK_BLOCK_NUM  0x0007ffff
+/* Flag = 0 : block empty */
+#define MASK_BLOCK_FLAG 0x80000000
 /*
  * ouiche_fs partition layout
  *

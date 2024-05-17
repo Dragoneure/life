@@ -1,4 +1,4 @@
-
+// SPDX-License-Identifier: GPL-2.0
 #include "linux/buffer_head.h"
 #include "linux/uaccess.h"
 #include "ouichefs.h"
@@ -18,11 +18,12 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 		goto read_end;
 	index = (struct ouichefs_file_index_block *)bh_index->b_data;
 
-	/* 
+	/*
 	 * Get the size of the last block to read. Needed to manage file
 	 * sizes that are not multiple of BLOCK_SIZE.
 	 */
 	int last_block_size = inode->i_size % OUICHEFS_BLOCK_SIZE;
+
 	if (last_block_size == 0 && inode->i_size != 0)
 		last_block_size = OUICHEFS_BLOCK_SIZE;
 
@@ -35,12 +36,14 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 
 	while (remaining_read && (logical_block_index < nb_blocks)) {
 		uint32_t bno = index->blocks[logical_block_index];
+
 		bh_data = sb_bread(inode->i_sb, bno);
 		if (!bh_data)
 			goto read_end;
 
 		/* Available size between the cursor and the end of the block */
 		size_t available_size = OUICHEFS_BLOCK_SIZE - logical_pos;
+
 		if (logical_block_index == nb_blocks - 1)
 			available_size = last_block_size - logical_pos;
 		if (available_size <= 0)
