@@ -75,7 +75,7 @@ brelse_index:
  * Return 1 if nothing was found, otherwise 0.
  */
 int find_block_pos(loff_t pos, struct ouichefs_file_index_block *index,
-		   int nb_blocks, int *block_index, int *logical_pos)
+		   int nb_blocks, int *logical_block_index, int *logical_pos)
 {
 	int current_block = 0, block_size;
 	int remaining_size = pos;
@@ -93,7 +93,7 @@ int find_block_pos(loff_t pos, struct ouichefs_file_index_block *index,
 		current_block++;
 	}
 
-	*block_index = current_block;
+	*logical_block_index = current_block;
 	*logical_pos = remaining_size;
 
 	return 0;

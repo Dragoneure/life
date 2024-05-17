@@ -131,8 +131,6 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 
 		/* Available size between the cursor and the end of the block */
 		available_size = OUICHEFS_BLOCK_SIZE - logical_pos;
-		if (logical_block_index == nb_blocks - 1)
-			available_size = last_block_size - logical_pos;
 		if (available_size <= 0)
 			goto free_bh_data;
 
@@ -187,13 +185,44 @@ write_end:
  */
 
 /*
- * Shift all blocks after block_index by nb_blocks to the right.
+ * Shift all blocks from block_index by nb_blocks to the right.
  */
 void shift_blocks(struct ouichefs_file_index_block *index, int block_index,
 		  int nb_blocks)
 {
-	for (int bli = nb_blocks; bli > block_index; bli--)
+	for (int bli = nb_blocks; bli >= block_index; bli--)
 		index->blocks[bli + nb_blocks] = index->blocks[bli];
+}
+
+int move_old_content_to(struct ouichefs_file_index_block *index,
+			struct super_block *sb, int block_index_from,
+			int block_index_to, int logical_pos)
+{
+	struct buffer_head *bh_data_from, *bh_data_to;
+	int to_copy =
+		get_block_size(index->blocks[block_index_from]) - logical_pos;
+
+	bh_data_from =
+		sb_bread(sb, get_block_number(index->blocks[block_index_from]));
+	bh_data_to =
+		sb_bread(sb, get_block_number(index->blocks[block_index_to]));
+	if (!bh_data_from || !bh_data_to)
+		return -EIO;
+
+	/* 
+	 * Move old content from logical pos in a new empty block. 
+	 * Update old and new block size. 
+	 */
+	memcpy(bh_data_to->b_data, bh_data_from->b_data + logical_pos, to_copy);
+	sub_block_size(&index->blocks[block_index_from], to_copy);
+	set_block_size(&index->blocks[block_index_to], to_copy);
+
+	mark_buffer_dirty(bh_data_to);
+	sync_dirty_buffer(bh_data_to);
+	brelse(bh_data_from);
+	brelse(bh_data_to);
+
+	return 0;
 }
 
 ssize_t ouichefs_write_insert(struct file *file, const char __user *buff,
@@ -201,14 +230,118 @@ ssize_t ouichefs_write_insert(struct file *file, const char __user *buff,
 {
 	struct inode *inode = file->f_inode;
 	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
-	struct ouichefs_sb_info *sbi = OUICHEFS_SB(inode->i_sb);
 	struct ouichefs_file_index_block *index;
 	struct buffer_head *bh_index = NULL, *bh_data = NULL;
 	size_t remaining_write = size, written = 0, nr_allocs = 0,
-	       new_file_size = 0;
-	int last_block_size, nb_blocks, logical_block_index, logical_pos;
-	find_block_pos(*pos, index, nb_blocks, &logical_block_index,
-		       &logical_pos);
-	reserve_blocks_write_insert(inode, index, logical_pos,
-				    logical_block_index, size);
+	       new_file_size = 0, to_copy = 0;
+	int logical_block_index, logical_pos;
+	bool move_old_content = 0;
+	ssize_t ret = 0;
+
+	/* Read index block from disk */
+	bh_index = sb_bread(inode->i_sb, ci->index_block);
+	if (!bh_index)
+		goto write_end;
+	index = (struct ouichefs_file_index_block *)bh_index->b_data;
+
+	/* Find logical block index and position in the block based on pos. */
+	if (*pos > inode->i_size) {
+		/* TODO: support write after end of file. */
+		pr_err("Write after the end not supported yet\n");
+		goto free_bh_index;
+	} else {
+		find_block_pos(*pos, index, inode->i_blocks - 1,
+			       &logical_block_index, &logical_pos);
+		to_copy = get_block_size(index->blocks[logical_block_index]) -
+			  logical_pos;
+		/* Should we move old content to a new block. */
+		move_old_content = to_copy > 0;
+	}
+
+	/* Compute number of blocks needed and check if we can pre-allocate. */
+	nr_allocs = idiv_ceil(size, OUICHEFS_BLOCK_SIZE) + move_old_content;
+	if (nr_allocs + inode->i_blocks - 1 > OUICHEFS_BLOCK_SIZE >> 2) {
+		ret = -ENOSPC;
+		goto free_bh_index;
+	}
+
+	/* Pre-allocate memory after block index that we insert to. */
+	shift_blocks(index, logical_block_index + 1, nr_allocs);
+	reserve_empty_blocks(inode, index, logical_block_index + 1, nr_allocs);
+
+	/* 
+	 * Move old content in logical block index to the last 
+	 * pre-allocated block if needed. 
+	 */
+	if (move_old_content)
+		ret = move_old_content_to(index, inode->i_sb,
+					  logical_block_index,
+					  logical_block_index + nr_allocs,
+					  logical_pos);
+	if (ret < 0)
+		goto free_bh_index;
+
+	while (remaining_write && (logical_block_index < nr_allocs)) {
+		uint32_t bno;
+		size_t available_size, len;
+		char *block;
+
+		/* Read data block from disk */
+		bno = index->blocks[logical_block_index];
+		bh_data = sb_bread(inode->i_sb, bno);
+		if (!bh_data)
+			goto free_bh_index;
+
+		/* Available size between the cursor and the end of the block */
+		available_size = OUICHEFS_BLOCK_SIZE - logical_pos;
+		if (available_size <= 0)
+			goto free_bh_data;
+
+		/* Do not write more than what's available and asked */
+		len = min(available_size, remaining_write);
+		block = (char *)bh_data->b_data;
+
+		/* Copy user data in the block and update its size. */
+		if (copy_from_user(block + logical_pos,
+				   (buff + (size - remaining_write)), len)) {
+			pr_err("%s: copy_from_user() failed\n", __func__);
+			goto free_bh_data;
+		}
+		set_block_size(&index->blocks[logical_block_index],
+			       logical_pos + len);
+
+		remaining_write -= len;
+		logical_block_index += 1;
+		/* The cursor position will start at 0 in subsequent blocks */
+		logical_pos = 0;
+
+		mark_buffer_dirty(bh_data);
+		sync_dirty_buffer(bh_data);
+		brelse(bh_data);
+	}
+
+	goto free_bh_index;
+
+free_bh_data:
+	brelse(bh_data);
+
+free_bh_index:
+	mark_buffer_dirty(bh_index);
+	sync_dirty_buffer(bh_index);
+	brelse(bh_index);
+
+write_end:
+	written = size - remaining_write;
+
+	/* Update file size based on what we could write */
+	new_file_size = inode->i_size + written;
+	inode->i_size = new_file_size;
+	inode->i_mtime = inode->i_ctime = current_time(inode);
+	mark_inode_dirty(inode);
+
+	*pos += written;
+	if (ret == 0)
+		ret = written;
+
+	return ret;
 }
