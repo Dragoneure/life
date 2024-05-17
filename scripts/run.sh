@@ -52,6 +52,17 @@ fi
 /share/test.o "$seed"
 /share/bench.o
 
+rm $TESTDIR/*
+echo -e "\n\033[1mUsing lite read/write:\033[0m\n"
+
+echo -n '2' > /sys/kernel/ouichefs/read_fn
+echo -n '2' > /sys/kernel/ouichefs/write_fn
+if [ ! -n "$1" ]; then
+  seed=$((seed + 1))
+fi
+/share/test_insert.o "$seed"
+/share/bench.o
+
 cd ~
 
 # cleanup

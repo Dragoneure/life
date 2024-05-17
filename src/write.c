@@ -227,8 +227,8 @@ int move_old_content_to(struct ouichefs_file_index_block *index,
 	return 0;
 }
 
-ssize_t ouichefs_write_insert(struct file *file, const char __user *buff,
-			      size_t size, loff_t *pos)
+ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
+			     size_t size, loff_t *pos)
 {
 	struct inode *inode = file->f_inode;
 	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
