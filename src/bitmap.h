@@ -142,12 +142,6 @@ static inline void set_block_size(int *block, int size)
 	*block |= (size << 19);
 }
 
-static inline void set_empty_block(int *block)
-{
-	*block &= ~(MASK_BLOCK_SIZE);
-	*block &= ~(MASK_BLOCK_FLAG);
-}
-
 static inline void set_block_number(int *block, int bno)
 {
 
@@ -155,7 +149,7 @@ static inline void set_block_number(int *block, int bno)
 	*block = (temp | bno);
 }
 
-static inline void substract_block_size(int *block, int value)
+static inline void sub_block_size(int *block, int value)
 {
 	int initial_size = get_block_size(*block);
 	int new_size = initial_size - value;
