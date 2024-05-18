@@ -67,6 +67,7 @@ cd ~
 
 # cleanup
 rm -f /dev/$MAJOR
+rm $TESTDIR/*
 umount $TESTDIR
-rm -rf $TESTDIR
+rmdir $TESTDIR
 rmmod ouichefs
