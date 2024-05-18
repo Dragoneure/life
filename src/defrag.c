@@ -47,85 +47,97 @@ int move_shift_block_content_to(struct ouichefs_file_index_block *index,
 	brelse(bh_data_from);
 	brelse(bh_data_to);
 
-	return 0;
+	return to_copy;
 }
 
-void defrag_block(struct inode *inode, struct ouichefs_file_index_block *index)
+/*
+ * Bubble up a block at block_index to the end of the index list.
+ */
+void bubble_up_block(struct ouichefs_file_index_block *index, int block_index,
+		     int nb_blocks)
 {
-	int current_block = 0;
-	int next_block = 1;
-
-	while (current_block < inode->i_blocks) {
-		if (index->blocks[current_block] == 0) {
-			while (next_block < inode->i_blocks &&
-			       index->blocks[next_block] == 0) {
-				next_block++;
-			}
-			if (next_block == inode->i_blocks)
-				break;
-			index->blocks[current_block] =
-				index->blocks[next_block];
-			index->blocks[next_block] = 0;
-		}
-		current_block++;
-		next_block++;
+	for (int bli = block_index; bli < nb_blocks - 1; bli++) {
+		int temp = index->blocks[bli];
+		index->blocks[bli] = index->blocks[bli + 1];
+		index->blocks[bli + 1] = temp;
 	}
-	inode->i_blocks = current_block + 1;
-	mark_inode_dirty(inode);
 }
 
 int defrag(struct file *file)
 {
 	struct inode *inode = file->f_inode;
+	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
 	struct ouichefs_file_index_block *index;
-	int current_block = 0;
+	struct buffer_head *bh_index = NULL;
+	int bli = 0, data_moved = 0, logical_pos = 0, block_removed = 0,
+	    ret = 0;
 
-	while (current_block < inode->i_blocks - 1) {
-		int taille_block = get_block_size(index->blocks[current_block]);
+	/* Read index block from disk */
+	bh_index = sb_bread(inode->i_sb, ci->index_block);
+	if (!bh_index) {
+		ret = -EIO;
+		goto defrag_end;
+	}
+	index = (struct ouichefs_file_index_block *)bh_index->b_data;
 
-		if (taille_block == OUICHEFS_BLOCK_SIZE)
+	/* 
+	 * First pass: copy data between blocks to fill the padding
+	 * going left to right.
+	 */
+
+	data_moved = get_block_size(index->blocks[bli]);
+	logical_pos = data_moved;
+
+	while (data_moved < inode->i_size && bli < inode->i_blocks - 2) {
+		int block_moved;
+
+		/* Bubble up empty blocks at the end of the index array */
+		if (block_empty(index->blocks[bli + 1])) {
+			bubble_up_block(index, bli + 1, inode->i_blocks - 1);
 			continue;
-
-		int remaining_size = OUICHEFS_BLOCK_SIZE - taille_block;
-		int next_block = current_block + 1;
-
-		while ((remaining_size > 0) && (next_block < inode->i_blocks)) {
-			int taille_next_block =
-				get_block_size(index->blocks[next_block]);
-			struct buffer_head *bh_data1 = sb_bread(
-				inode->i_sb,
-				get_block_number(index->blocks[current_block]));
-			struct buffer_head *bh_data2 = sb_bread(
-				inode->i_sb,
-				get_block_number(index->blocks[next_block]));
-			int to_copy = min(remaining_size, taille_next_block);
-
-			memcpy(bh_data1->b_data + taille_block,
-			       bh_data2->b_data, to_copy);
-			taille_block += to_copy;
-			remaining_size -= to_copy;
-
-			mark_buffer_dirty(bh_data1);
-			sync_dirty_buffer(bh_data1);
-			brelse(bh_data1);
-			mark_buffer_dirty(bh_data2);
-			sync_dirty_buffer(bh_data2);
-			brelse(bh_data2);
-
-			if (to_copy == taille_next_block) {
-				put_block(OUICHEFS_SB(inode->i_sb),
-					  index->blocks[next_block]);
-				index->blocks[next_block] = 0;
-			} else {
-				update(inode, index, next_block, to_copy);
-			}
-			next_block++;
 		}
-		set_block_size(index->blocks[current_block], taille_block);
-		current_block++;
+
+		/* Move data in the next block to the current block. */
+		block_moved = move_shift_block_content_to(
+			index, inode->i_sb, bli + 1, bli, logical_pos);
+		if (block_moved < 0) {
+			ret = -EIO;
+			goto free_bh_index;
+		}
+		data_moved += block_moved;
+		logical_pos += block_moved;
+
+		/* If the block is full, go to the block afterward. */
+		if (logical_pos == OUICHEFS_BLOCK_SIZE) {
+			bli++;
+			logical_pos = get_block_size(index->blocks[bli]);
+		}
 	}
 
-	defrag_block(inode, index);
+	/*
+	 * Second pass: de-allocate all empty blocks that we bubbled at the end.
+	 */
 
-	return 0;
+	if (!block_empty(index->blocks[bli]))
+		bli++;
+
+	for (; bli < inode->i_blocks - 1; bli++) {
+		put_block(OUICHEFS_SB(inode->i_sb),
+			  get_block_number(index->blocks[bli]));
+		index->blocks[bli] = 0;
+		block_removed++;
+	}
+
+	/* Update inode information */
+	inode->i_blocks -= block_removed;
+	inode->i_mtime = inode->i_ctime = current_time(inode);
+	mark_inode_dirty(inode);
+
+free_bh_index:
+	mark_buffer_dirty(bh_index);
+	sync_dirty_buffer(bh_index);
+	brelse(bh_index);
+
+defrag_end:
+	return ret;
 }
