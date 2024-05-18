@@ -366,8 +366,9 @@ static int ouichefs_unlink(struct inode *dir, struct dentry *dentry)
 		if (!file_block->blocks[i])
 			continue;
 
-		put_block(sbi, file_block->blocks[i]);
-		bh2 = sb_bread(sb, file_block->blocks[i]);
+		put_block(sbi, get_block_number(file_block->blocks[i]));
+		bh2 = sb_bread(sb, get_block_number(file_block->blocks[i]));
+
 		if (!bh2)
 			continue;
 		block = (char *)bh2->b_data;
@@ -392,8 +393,8 @@ clean_inode:
 	inode->i_mode = 0;
 	inode->i_ctime.tv_sec = inode->i_mtime.tv_sec = inode->i_atime.tv_sec =
 		0;
-	inode->i_ctime.tv_nsec = inode->i_mtime.tv_nsec = inode->i_atime.tv_nsec =
-		0;
+	inode->i_ctime.tv_nsec = inode->i_mtime.tv_nsec =
+		inode->i_atime.tv_nsec = 0;
 	inode_dec_link_count(inode);
 	mark_inode_dirty(inode);
 

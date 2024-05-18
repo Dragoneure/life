@@ -244,7 +244,7 @@ static int ouichefs_open(struct inode *inode, struct file *file)
 		index = (struct ouichefs_file_index_block *)bh_index->b_data;
 
 		for (iblock = 0; index->blocks[iblock] != 0; iblock++) {
-			put_block(sbi, index->blocks[iblock]);
+			put_block(sbi, get_block_number(index->blocks[iblock]));
 			index->blocks[iblock] = 0;
 		}
 		inode->i_size = 0;
