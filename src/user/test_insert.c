@@ -52,6 +52,8 @@ int test_write_insert()
 
 	lseek(fd, prev_len, SEEK_SET);
 	write(fd, insert_write, insert_len);
+
+	DEFRAG_FILE(fd);
 	SHOW_FILE_INFO(fd);
 
 	lseek(fd, 0, SEEK_SET);

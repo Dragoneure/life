@@ -193,11 +193,18 @@ struct time_data {
 
 /* Ioctl commands */
 
-#define SHOW_FILE_INFO(fd)                                     \
-	do {                                                   \
-		int copy = fd;\
-		int dev_fd = open("/dev/ouichefs-dev", O_RDONLY);  \
-		ioctl(dev_fd, OUICHEFS_IOC_FILE_INFO, &copy); \
+#define SHOW_FILE_INFO(fd)                                        \
+	do {                                                      \
+		int copy = fd;                                    \
+		int dev_fd = open("/dev/ouichefs-dev", O_RDONLY); \
+		ioctl(dev_fd, OUICHEFS_IOC_FILE_INFO, &copy);     \
+	} while (0)
+
+#define DEFRAG_FILE(fd)                                           \
+	do {                                                      \
+		int copy = fd;                                    \
+		int dev_fd = open("/dev/ouichefs-dev", O_RDONLY); \
+		ioctl(dev_fd, OUICHEFS_IOC_DEFRAG, &copy);        \
 	} while (0)
 
 #endif /* UTILS_H */

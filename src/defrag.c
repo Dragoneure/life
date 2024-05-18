@@ -3,8 +3,8 @@
 #define pr_fmt(fmt) "%s:%s: " fmt, KBUILD_MODNAME, __func__
 
 #include "linux/buffer_head.h"
-#include "bitmap.h"
 #include "ouichefs.h"
+#include "bitmap.h"
 
 /*
  * Move content from the beginning of a block (block_index_from),
@@ -63,7 +63,7 @@ void bubble_up_block(struct ouichefs_file_index_block *index, int block_index,
 	}
 }
 
-int defrag(struct file *file)
+int ouichefs_defrag(struct file *file)
 {
 	struct inode *inode = file->f_inode;
 	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
