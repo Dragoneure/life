@@ -20,8 +20,7 @@ int move_shift_block_content_to(struct ouichefs_file_index_block *index,
 
 	/* Get the size to copy, should fit in destination block. */
 	from_len = get_block_size(index->blocks[block_index_from]);
-	to_available_len =
-		get_block_size(index->blocks[block_index_to]) - logical_pos;
+	to_available_len = OUICHEFS_BLOCK_SIZE - logical_pos;
 	to_copy = min(from_len, to_available_len);
 
 	bh_data_from =

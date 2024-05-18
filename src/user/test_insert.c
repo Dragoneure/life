@@ -47,13 +47,14 @@ int test_write_insert()
 	memcpy(first_write + prev_len, next_write, next_len);
 
 	write(fd, first_write, prev_len + next_len);
-	SHOW_FILE_INFO(fd);
-	printf("\n\n");
 
 	lseek(fd, prev_len, SEEK_SET);
 	write(fd, insert_write, insert_len);
 
+	printf("\nBefore defragmentation: \n");
+	SHOW_FILE_INFO(fd);
 	DEFRAG_FILE(fd);
+	printf("\nAfter defragmentation: \n");
 	SHOW_FILE_INFO(fd);
 
 	lseek(fd, 0, SEEK_SET);
@@ -62,6 +63,36 @@ int test_write_insert()
 	ASSERT_EQ_BUF(rbuf, prev_write, prev_len);
 	ASSERT_EQ_BUF(rbuf + prev_len, insert_write, insert_len);
 	ASSERT_EQ_BUF(rbuf + prev_len + insert_len, next_write, next_len);
+
+	return TEST_SUCCESS;
+}
+
+int test_defrag()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+
+	char wbuf[] = "The disco-dancing banana slipped on a rainbow.";
+	size_t len = strlen(wbuf);
+	int iterations = 3;
+
+	for (int i = 0; i < iterations; i++) {
+		lseek(fd, 0, SEEK_SET);
+		write(fd, wbuf, len);
+	}
+
+	char rbuf[len];
+
+	lseek(fd, 0, SEEK_SET);
+	for (int i = 0; i < iterations; i++) {
+		read(fd, rbuf, len);
+		ASSERT_EQ_BUF(rbuf, wbuf, len);
+	}
+
+	printf("\nBefore defragmentation: \n");
+	SHOW_FILE_INFO(fd);
+	DEFRAG_FILE(fd);
+	printf("\nAfter defragmentation: \n");
+	SHOW_FILE_INFO(fd);
 
 	return TEST_SUCCESS;
 }
@@ -78,6 +109,7 @@ int main(int argc, char **argv)
 
 	RUN_TEST(test_write_insert_begin);
 	RUN_TEST(test_write_insert);
+	RUN_TEST(test_defrag);
 
 	return 0;
 }

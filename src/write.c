@@ -194,8 +194,10 @@ write_end:
 void shift_blocks(struct ouichefs_file_index_block *index, int block_index,
 		  int nb_blocks)
 {
-	for (int bli = nb_blocks; bli >= block_index; bli--)
+	for (int bli = nb_blocks; bli >= block_index; bli--) {
 		index->blocks[bli + nb_blocks] = index->blocks[bli];
+		index->blocks[bli] = 0;
+	}
 }
 
 /*
