@@ -241,11 +241,14 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	int logical_block_index, logical_pos, alloc_index_start;
 	bool move_old_content = 0;
 	ssize_t ret = 0;
+	int diff_old_new = 0;
 
 	/* Read index block from disk */
 	bh_index = sb_bread(inode->i_sb, ci->index_block);
-	if (!bh_index)
+	if (!bh_index) {
+		ret = -EIO;
 		goto write_end;
+	}
 	index = (struct ouichefs_file_index_block *)bh_index->b_data;
 
 	/* Find logical block index and position in the block based on pos. */
@@ -263,7 +266,10 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	}
 
 	/* Compute number of blocks needed and check if we can pre-allocate. */
-	nr_allocs = idiv_ceil(size, OUICHEFS_BLOCK_SIZE) + move_old_content;
+	diff_old_new = size - to_copy;
+	diff_old_new = (size > to_copy) ? diff_old_new : 0;
+	nr_allocs =
+		idiv_ceil(diff_old_new, OUICHEFS_BLOCK_SIZE) + move_old_content;
 	if (nr_allocs + inode->i_blocks - 1 > OUICHEFS_BLOCK_SIZE >> 2) {
 		ret = -ENOSPC;
 		goto free_bh_index;
@@ -297,13 +303,16 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 		/* Read data block from disk */
 		bno = index->blocks[logical_block_index];
 		bh_data = sb_bread(inode->i_sb, bno);
-		if (!bh_data)
+		if (!bh_data) {
+			ret = -EIO;
 			goto free_bh_index;
-
+		}
 		/* Available size between the cursor and the end of the block */
 		available_size = OUICHEFS_BLOCK_SIZE - logical_pos;
-		if (available_size <= 0)
+		if (available_size <= 0) {
+			ret = -ENODATA;
 			goto free_bh_data;
+		}
 
 		/* Do not write more than what's available and asked */
 		len = min(available_size, remaining_write);
@@ -317,7 +326,6 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 		}
 		set_block_size(&index->blocks[logical_block_index],
 			       logical_pos + len);
-
 		remaining_write -= len;
 		logical_block_index += 1;
 		/* The cursor position will start at 0 in subsequent blocks */
@@ -347,9 +355,11 @@ write_end:
 	inode->i_mtime = inode->i_ctime = current_time(inode);
 	mark_inode_dirty(inode);
 
-	*pos += written;
-	if (ret == 0)
+	/* Update the cursor only if no problem encountered. */
+	if (ret == 0) {
+		*pos += written;
 		ret = written;
+	}
 
 	return ret;
 }
