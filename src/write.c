@@ -295,6 +295,8 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	if (ret < 0)
 		goto free_bh_index;
 
+	pr_info("comming into while\n");
+
 	while (remaining_write && (logical_block_index < nr_allocs)) {
 		uint32_t bno;
 		size_t available_size, len;
@@ -302,18 +304,18 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 
 		/* Read data block from disk */
 		bno = index->blocks[logical_block_index];
-		bh_data = sb_bread(inode->i_sb, bno);
+		bh_data = sb_bread(inode->i_sb, get_block_number(bno));
 		if (!bh_data) {
 			ret = -EIO;
 			goto free_bh_index;
 		}
+		pr_info("here\n");
 		/* Available size between the cursor and the end of the block */
 		available_size = OUICHEFS_BLOCK_SIZE - logical_pos;
 		if (available_size <= 0) {
 			ret = -ENODATA;
 			goto free_bh_data;
 		}
-
 		/* Do not write more than what's available and asked */
 		len = min(available_size, remaining_write);
 		block = (char *)bh_data->b_data;
