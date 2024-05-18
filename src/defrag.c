@@ -1,26 +1,53 @@
 // SPDX-License-Identifier: GPL-2.0
+
 #define pr_fmt(fmt) "%s:%s: " fmt, KBUILD_MODNAME, __func__
 
 #include "linux/buffer_head.h"
-
 #include "bitmap.h"
 #include "ouichefs.h"
 
-void update(struct inode *inode, struct ouichefs_file_index_block *index,
-	    int block_number, int size_start)
+/*
+ * Move content from the beginning of a block (block_index_from),
+ * up to a length fitting in a target block (block_index_to), starting at
+ * logical_pos. Also, shift up any remaining data in the source block.
+ */
+int move_shift_block_content_to(struct ouichefs_file_index_block *index,
+				struct super_block *sb, int block_index_from,
+				int block_index_to, int logical_pos)
 {
-	int new_size = get_block_size(index->blocks[block_number]) - size_start;
-	struct buffer_head *bh_data1 = sb_bread(
-		inode->i_sb, get_block_number(index->blocks[block_number]));
-	char buff[new_size];
+	struct buffer_head *bh_data_from, *bh_data_to;
+	int from_len, to_available_len, to_copy;
 
-	memcpy(buff, bh_data1 + size_start, new_size);
-	memcpy(bh_data1, buff, new_size);
+	/* Get the size to copy, should fit in destination block. */
+	from_len = get_block_size(index->blocks[block_index_from]);
+	to_available_len =
+		get_block_size(index->blocks[block_index_to]) - logical_pos;
+	to_copy = min(from_len, to_available_len);
 
-	set_block_size(index->blocks[block_number], new_size);
-	mark_buffer_dirty(bh_data1);
-	sync_dirty_buffer(bh_data1);
-	brelse(bh_data1);
+	bh_data_from =
+		sb_bread(sb, get_block_number(index->blocks[block_index_from]));
+	bh_data_to =
+		sb_bread(sb, get_block_number(index->blocks[block_index_to]));
+	if (!bh_data_from || !bh_data_to)
+		return -EIO;
+
+	/* Move data from source block to destination. */
+	memcpy(bh_data_to->b_data + logical_pos, bh_data_from->b_data, to_copy);
+	sub_block_size(&index->blocks[block_index_from], to_copy);
+	add_block_size(&index->blocks[block_index_to], to_copy);
+
+	/* Shift up any remaining data in source block. */
+	memcpy(bh_data_from->b_data, bh_data_from->b_data + to_copy,
+	       from_len - to_copy);
+
+	mark_buffer_dirty(bh_data_from);
+	sync_dirty_buffer(bh_data_from);
+	mark_buffer_dirty(bh_data_to);
+	sync_dirty_buffer(bh_data_to);
+	brelse(bh_data_from);
+	brelse(bh_data_to);
+
+	return 0;
 }
 
 void defrag_block(struct inode *inode, struct ouichefs_file_index_block *index)
@@ -50,7 +77,6 @@ void defrag_block(struct inode *inode, struct ouichefs_file_index_block *index)
 int defrag(struct file *file)
 {
 	struct inode *inode = file->f_inode;
-	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
 	struct ouichefs_file_index_block *index;
 	int current_block = 0;
 

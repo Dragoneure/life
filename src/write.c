@@ -198,6 +198,11 @@ void shift_blocks(struct ouichefs_file_index_block *index, int block_index,
 		index->blocks[bli + nb_blocks] = index->blocks[bli];
 }
 
+/*
+ * Copy old content from a block (block_index_from), 
+ * from logical_pos to its block size, 
+ * to another block (block_index_to), which is empty.
+ */
 int move_old_content_to(struct ouichefs_file_index_block *index,
 			struct super_block *sb, int block_index_from,
 			int block_index_to, int logical_pos)
