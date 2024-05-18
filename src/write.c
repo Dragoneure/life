@@ -238,10 +238,9 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	struct buffer_head *bh_index = NULL, *bh_data = NULL;
 	size_t remaining_write = size, written = 0, nr_allocs = 0,
 	       new_file_size = 0, to_copy = 0;
-	int logical_block_index, logical_pos, alloc_index_start;
+	int logical_block_index, logical_pos, alloc_index_start, diff_old_new;
 	bool move_old_content = 0;
 	ssize_t ret = 0;
-	int diff_old_new = 0;
 
 	/* Read index block from disk */
 	bh_index = sb_bread(inode->i_sb, ci->index_block);
@@ -295,8 +294,6 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	if (ret < 0)
 		goto free_bh_index;
 
-	pr_info("comming into while\n");
-
 	while (remaining_write && (logical_block_index < nr_allocs)) {
 		uint32_t bno;
 		size_t available_size, len;
@@ -309,7 +306,7 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 			ret = -EIO;
 			goto free_bh_index;
 		}
-		pr_info("here\n");
+
 		/* Available size between the cursor and the end of the block */
 		available_size = OUICHEFS_BLOCK_SIZE - logical_pos;
 		if (available_size <= 0) {
@@ -350,6 +347,7 @@ free_bh_index:
 
 write_end:
 	written = size - remaining_write;
+	*pos += written;
 
 	/* Update file size based on what we could write */
 	new_file_size = inode->i_size + written;
@@ -357,9 +355,7 @@ write_end:
 	inode->i_mtime = inode->i_ctime = current_time(inode);
 	mark_inode_dirty(inode);
 
-	/* Update the cursor only if no problem encountered. */
 	if (ret == 0) {
-		*pos += written;
 		ret = written;
 	}
 

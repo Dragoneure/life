@@ -63,6 +63,7 @@ int test_write_insert()
 
 	return TEST_SUCCESS;
 }
+
 int main(int argc, char **argv)
 {
 	int seed = 42;
