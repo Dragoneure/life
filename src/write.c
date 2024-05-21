@@ -247,7 +247,7 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 
 	if (*pos > inode->i_size) {
 		int bli, block_size, nr_blocks_between, size_between,
-			filled = 0;
+			filled = 0, last_block_size = 0;
 		/* Allocate blocks to reach file cursor when inserting after the end. */
 		size_between = *pos - inode->i_size;
 		nr_blocks_between = size_between / OUICHEFS_BLOCK_SIZE;
@@ -257,6 +257,8 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 
 		/* */
 		bli = max(alloc_index_start - 1, 0);
+		if (get_block_size(index->blocks[bli]) == OUICHEFS_BLOCK_SIZE)
+			bli++;
 		for (; bli < alloc_index_start + nr_blocks_between; bli++) {
 			block_size =
 				min(size_between - filled,
@@ -266,10 +268,16 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 			filled += block_size;
 		}
 
+		inode->i_size += size_between;
 		bli--;
-		logical_pos = get_block_size(index->blocks[bli]) %
-			      OUICHEFS_BLOCK_SIZE;
-		logical_block_index = bli;
+		last_block_size = get_block_size(index->blocks[bli]);
+		if (last_block_size == OUICHEFS_BLOCK_SIZE) {
+			logical_pos = size_between - filled;
+			logical_block_index = ++bli;
+		} else {
+			logical_pos = last_block_size;
+			logical_block_index = bli;
+		}
 
 	} else {
 		/* Find logical block index and position in the block based on pos. */
@@ -280,6 +288,7 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 		/* Should we move old content to a new block. */
 		move_old_content = to_copy > 0;
 		shift_old_content = inode->i_blocks - 1 > 0;
+		alloc_index_start = 0;
 	}
 
 	/* Compute number of blocks needed and check if we can pre-allocate. */
@@ -297,13 +306,11 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	}
 
 	/* Pre-allocate memory after block index that we insert to. */
-	alloc_index_start = 0;
 	if (shift_old_content) {
 		alloc_index_start = logical_block_index + 1;
 		shift_blocks(index, logical_block_index + 1, nr_allocs);
 	}
 	reserve_empty_blocks(inode, index, alloc_index_start, nr_allocs);
-
 	/*
 	 * Move old content in logical block index to the last
 	 * pre-allocated block if needed.
