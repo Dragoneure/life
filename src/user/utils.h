@@ -157,7 +157,7 @@ static inline void pr_buf(const char *buf, size_t len)
 #define ASSERT_EQ(actual, expected)                                           \
 	if (actual != expected) {                                             \
 		pr_test(ANSI_RED "Comparison failed: \n" ANSI_RESET);         \
-		printf("\tActual: %zu\n\tExpected: %zu\n", actual, expected); \
+		printf("\tActual: %zi\n\tExpected: %zi\n", actual, expected); \
 		return TEST_FAIL;                                             \
 	}
 

@@ -117,10 +117,9 @@ int ouichefs_defrag(struct file *file)
 	 * Second pass: de-allocate all empty blocks that we bubbled at the end.
 	 */
 
-	if (!block_empty(index->blocks[bli]))
-		bli++;
-
 	for (; bli < inode->i_blocks - 1; bli++) {
+		if (!block_empty(index->blocks[bli]))
+			continue;
 		put_block(OUICHEFS_SB(inode->i_sb),
 			  get_block_number(index->blocks[bli]));
 		index->blocks[bli] = 0;

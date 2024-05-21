@@ -58,16 +58,10 @@ int reserve_empty_blocks(struct inode *inode,
  * Return 1 in case of error.
  */
 int reserve_write_blocks(struct inode *inode,
-			 struct ouichefs_file_index_block *index,
-			 size_t new_file_size)
+			 struct ouichefs_file_index_block *index, int nr_allocs)
 {
-	int new_bln;
-	int old_bln = inode->i_blocks - 1;
-
-	/* Find the new number of blocks based on new file size. */
-	new_bln = idiv_ceil(new_file_size, OUICHEFS_BLOCK_SIZE);
-
-	return reserve_empty_blocks(inode, index, max(old_bln - 1, 0), new_bln);
+	int alloc_start = max((int)inode->i_blocks - 2, 0);
+	return reserve_empty_blocks(inode, index, alloc_start, nr_allocs);
 }
 
 ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
@@ -80,17 +74,17 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 	struct buffer_head *bh_index = NULL, *bh_data = NULL;
 	size_t remaining_write = size, written = 0, nr_allocs = 0,
 	       new_file_size = 0;
-	int last_block_size, nb_blocks, logical_block_index, logical_pos;
+	int nb_blocks, logical_block_index, logical_pos;
 
 	/* Check if the write can be completed (enough space?) */
 	if (*pos + size > OUICHEFS_MAX_FILESIZE)
 		return -ENOSPC;
 
 	/* Check if we can allocate needed blocks */
-	nr_allocs = max(*pos + (uint32_t)size, file->f_inode->i_size) /
-		    OUICHEFS_BLOCK_SIZE;
-	if (nr_allocs > file->f_inode->i_blocks - 1)
-		nr_allocs -= file->f_inode->i_blocks - 1;
+	nr_allocs = idiv_ceil(max(*pos + (uint32_t)size, inode->i_size),
+			      OUICHEFS_BLOCK_SIZE);
+	if (nr_allocs > inode->i_blocks - 1)
+		nr_allocs -= inode->i_blocks - 1;
 	else
 		nr_allocs = 0;
 	if (nr_allocs > sbi->nr_free_blocks)
@@ -103,17 +97,8 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 	index = (struct ouichefs_file_index_block *)bh_index->b_data;
 
 	/* Allocate needed blocks */
-	new_file_size = *pos + size;
-	if (reserve_write_blocks(inode, index, new_file_size))
+	if (reserve_write_blocks(inode, index, nr_allocs))
 		goto write_end;
-
-	/*
-	 * Get the size of the last block to write. Needed to manage file
-	 * sizes that are not multiple of BLOCK_SIZE.
-	 */
-	last_block_size = new_file_size % OUICHEFS_BLOCK_SIZE;
-	if (last_block_size == 0 && new_file_size != 0)
-		last_block_size = OUICHEFS_BLOCK_SIZE;
 
 	/* Number of data blocks in the file (without the index block) */
 	nb_blocks = inode->i_blocks - 1;
