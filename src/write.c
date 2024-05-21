@@ -228,6 +228,7 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 {
 	struct inode *inode = file->f_inode;
 	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
+	struct ouichefs_sb_info *sbi = OUICHEFS_SB(inode->i_sb);
 	struct ouichefs_file_index_block *index;
 	struct buffer_head *bh_index = NULL, *bh_data = NULL;
 	size_t remaining_write = size, written = 0, nr_allocs = 0, to_copy = 0;
@@ -263,6 +264,10 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	nr_allocs =
 		idiv_ceil(diff_old_new, OUICHEFS_BLOCK_SIZE) + move_old_content;
 	if (nr_allocs + inode->i_blocks - 1 > OUICHEFS_BLOCK_SIZE >> 2) {
+		ret = -ENOSPC;
+		goto free_bh_index;
+	}
+	if (nr_allocs > sbi->nr_free_blocks) {
 		ret = -ENOSPC;
 		goto free_bh_index;
 	}
