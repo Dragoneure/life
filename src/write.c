@@ -160,6 +160,8 @@ write_end:
 	new_file_size = *pos + written;
 	if (new_file_size > inode->i_size) {
 		inode->i_size = new_file_size;
+	}
+	if (written > 0) {
 		inode->i_mtime = inode->i_ctime = current_time(inode);
 		mark_inode_dirty(inode);
 	}
@@ -228,8 +230,7 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
 	struct ouichefs_file_index_block *index;
 	struct buffer_head *bh_index = NULL, *bh_data = NULL;
-	size_t remaining_write = size, written = 0, nr_allocs = 0,
-	       new_file_size = 0, to_copy = 0;
+	size_t remaining_write = size, written = 0, nr_allocs = 0, to_copy = 0;
 	int logical_block_index, logical_pos, alloc_index_start, diff_old_new;
 	bool move_old_content = 0;
 	ssize_t ret = 0;
@@ -343,10 +344,11 @@ write_end:
 	*pos += written;
 
 	/* Update file size based on what we could write */
-	new_file_size = inode->i_size + written;
-	inode->i_size = new_file_size;
-	inode->i_mtime = inode->i_ctime = current_time(inode);
-	mark_inode_dirty(inode);
+	if (written > 0) {
+		inode->i_size = inode->i_size + written;
+		inode->i_mtime = inode->i_ctime = current_time(inode);
+		mark_inode_dirty(inode);
+	}
 
 	if (ret == 0) {
 		ret = written;
