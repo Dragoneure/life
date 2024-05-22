@@ -67,7 +67,7 @@ static inline void flush_cache(void)
 {
 	sync();
 	int fd = open("/proc/sys/vm/drop_caches", O_WRONLY);
-	write(fd, "1", 1);
+	write(fd, "3", 1);
 	close(fd);
 }
 
