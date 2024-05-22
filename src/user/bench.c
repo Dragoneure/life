@@ -38,8 +38,8 @@ void bench_write_read()
 
 	printf("\n");
 
-	pr_test("Total write time: %ld us\n", w_time / 1000);
-	pr_test("Total read time: %ld us\n", r_time / 1000);
+	pr_test("Total write time: %ld ms\n", w_time / 1000);
+	pr_test("Total read time: %ld ms\n", r_time / 1000);
 }
 
 int main(int argc, char **argv)
