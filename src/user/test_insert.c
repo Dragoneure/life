@@ -97,10 +97,8 @@ int test_defrag()
 	return TEST_SUCCESS;
 }
 
-int test_write_end_block()
+int test_write_pos(int fd, int SEEK, int offset)
 {
-	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
-
 	write(fd, "HAHA", 4);
 	char wbuf[] = "The disco-dancing banana slipped on a rainbow.";
 	size_t len = strlen(wbuf);
@@ -108,7 +106,7 @@ int test_write_end_block()
 
 	printf("\nbefore write\n");
 	SHOW_FILE_INFO(fd);
-	int cur = lseek(fd, 400, SEEK_END);
+	int cur = lseek(fd, offset, SEEK);
 	write(fd, wbuf, len);
 	printf("\nafter write\n");
 	SHOW_FILE_INFO(fd);
@@ -123,46 +121,19 @@ int test_write_end_block()
 int test_write_end()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
-
-	write(fd, "HAHA", 4);
-	char wbuf[] = "The disco-dancing banana slipped on a rainbow.";
-	size_t len = strlen(wbuf);
-	printf("len : %zu\n", len);
-	char rbuf[100];
-	printf("\nbefore write\n");
-	SHOW_FILE_INFO(fd);
-	int cur = lseek(fd, 18675, SEEK_END);
-	write(fd, wbuf, len);
-	printf("\nafter write\n");
-	SHOW_FILE_INFO(fd);
-
-	lseek(fd, cur, SEEK_SET);
-	read(fd, rbuf, len);
-
-	ASSERT_EQ_BUF(rbuf, wbuf, len);
-	return TEST_SUCCESS;
+	return test_write_pos(fd, SEEK_END, 400);
 }
 
 int test_write_begin_block()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+	return test_write_pos(fd, SEEK_SET, 4096);
+}
 
-	write(fd, "HAHA", 4);
-	char wbuf[] = "The disco-dancing banana slipped on a rainbow.";
-	size_t len = strlen(wbuf);
-	char rbuf[100];
-	printf("\nbefore write\n");
-	SHOW_FILE_INFO(fd);
-	int cur = lseek(fd, 4096, SEEK_SET);
-	printf("\nafter write\n");
-	write(fd, wbuf, len);
-	SHOW_FILE_INFO(fd);
-
-	lseek(fd, cur, SEEK_SET);
-	read(fd, rbuf, len);
-
-	ASSERT_EQ_BUF(rbuf, wbuf, len);
-	return TEST_SUCCESS;
+int test_write_far()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+	return test_write_pos(fd, SEEK_SET, 18075);
 }
 
 int main(int argc, char **argv)
@@ -178,8 +149,8 @@ int main(int argc, char **argv)
 	RUN_TEST(test_write_insert_begin);
 	RUN_TEST(test_write_insert);
 	RUN_TEST(test_defrag);
-	RUN_TEST(test_write_end_block);
 	RUN_TEST(test_write_end);
 	RUN_TEST(test_write_begin_block);
+	RUN_TEST(test_write_far);
 	return 0;
 }
