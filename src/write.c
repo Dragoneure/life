@@ -245,7 +245,7 @@ int fill_to_reach_pos(struct inode *inode,
 		      struct ouichefs_sb_info *sbi, loff_t pos,
 		      int *logical_block_index, int *logical_pos)
 {
-	int bli, block_size, nb_blocks_to_fill, to_fill;
+	int bli, block_size, nb_blocks_to_fill, to_fill, alloc_start;
 	bool last_block_full = 0;
 	int filled = 0;
 
@@ -256,18 +256,19 @@ int fill_to_reach_pos(struct inode *inode,
 		return -ENOSPC;
 
 	/* Allocate and fill blocks to reach file cursor, start after last block. */
-	bli = max((int)inode->i_blocks - 1, 0);
-	reserve_empty_blocks(inode, index, bli, nb_blocks_to_fill);
-	for (; bli < bli + nb_blocks_to_fill; bli++) {
+	alloc_start = max((int)inode->i_blocks - 1, 0);
+	reserve_empty_blocks(inode, index, alloc_start, nb_blocks_to_fill);
+	for (bli = alloc_start; bli < alloc_start + nb_blocks_to_fill; bli++) {
 		block_size = min(to_fill - filled, OUICHEFS_BLOCK_SIZE);
 		set_block_size(&index->blocks[bli], block_size);
 		filled += block_size;
 	}
+	bli--;
 
 	inode->i_size += filled;
 	last_block_full = block_size == OUICHEFS_BLOCK_SIZE;
 	*logical_block_index = last_block_full ? bli + 1 : bli;
-	*logical_pos = block_size == last_block_full ? 0 : block_size;
+	*logical_pos = last_block_full ? 0 : block_size;
 
 	return 0;
 }
@@ -301,13 +302,14 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 		if (ret < 0)
 			goto free_bh_index;
 	} else {
-		/* Find logical block index and position in the block based on pos. */
+		/* Find logical block index and position in the block based on pos */
 		find_block_pos(*pos, index, inode->i_blocks - 1,
 			       &logical_block_index, &logical_pos);
 		to_copy = get_block_size(index->blocks[logical_block_index]) -
 			  logical_pos;
-		/* Should we move old content to a new block. */
+		/* Should we move old content to a new block */
 		move_old_content = to_copy > 0;
+		/* Shift only if we are not in the last block */
 		shift_old_content = logical_block_index !=
 				    max((int)inode->i_blocks - 2, 0);
 	}
@@ -317,17 +319,24 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	 * No block is allocated if there is enough space in the block we insert to.
 	 */
 	available_size = OUICHEFS_BLOCK_SIZE - logical_pos;
-	remaining_size = size - available_size;
+	remaining_size = max((int)size - available_size, 0);
 	nb_allocs = idiv_ceil(remaining_size, OUICHEFS_BLOCK_SIZE) +
 		    move_old_content;
+	/* Cursor in new unallocated block */
+	if (index->blocks[logical_block_index] == 0)
+		nb_allocs++;
 	if ((ret = space_available(inode, sbi, nb_allocs)) < 0)
 		goto free_bh_index;
 
-	/* Pre-allocate memory after block index that we insert to. */
-	if (nb_allocs > 0 && shift_old_content) {
-		alloc_index_start = logical_block_index + 1;
+	/* 
+	 * Pre-allocate memory after block that we insert to. 
+	 * If the current block was not allocated before, start from it.
+	 */
+	alloc_index_start = logical_block_index + 1;
+	if (index->blocks[logical_block_index] == 0)
+		alloc_index_start--;
+	if (shift_old_content && nb_allocs > 0)
 		shift_blocks(index, alloc_index_start, nb_allocs);
-	}
 	reserve_empty_blocks(inode, index, alloc_index_start, nb_allocs);
 
 	/*
