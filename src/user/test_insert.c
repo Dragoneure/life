@@ -14,12 +14,8 @@ int test_write_insert_begin()
 	size_t len = strlen(wbuf);
 
 	write(fd, prev_write, prev_len);
-	SHOW_FILE_INFO(fd);
-	printf("\n\n");
-
 	lseek(fd, 0, SEEK_SET);
 	write(fd, wbuf, len);
-	SHOW_FILE_INFO(fd);
 
 	char rbuf[prev_len + len];
 
@@ -35,12 +31,14 @@ int test_write_insert_begin()
 int test_write_insert()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+
 	char prev_write[] = "I love to eat chocolate\n";
 	char next_write[] = "I don't like to eat chocolate\n";
 	char insert_write[] = "I love banana\n";
 	size_t prev_len = strlen(prev_write);
 	size_t next_len = strlen(next_write);
 	size_t insert_len = strlen(insert_write);
+
 	char rbuf[prev_len + next_len + insert_len];
 	char first_write[prev_len + next_len];
 	memcpy(first_write, prev_write, prev_len);
@@ -51,11 +49,7 @@ int test_write_insert()
 	lseek(fd, prev_len, SEEK_SET);
 	write(fd, insert_write, insert_len);
 
-	printf("\nBefore defragmentation: \n");
-	SHOW_FILE_INFO(fd);
 	DEFRAG_FILE(fd);
-	printf("\nAfter defragmentation: \n");
-	SHOW_FILE_INFO(fd);
 
 	lseek(fd, 0, SEEK_SET);
 	read(fd, rbuf, prev_len + next_len + insert_len);
@@ -88,11 +82,7 @@ int test_defrag()
 		ASSERT_EQ_BUF(rbuf, wbuf, len);
 	}
 
-	printf("\nBefore defragmentation: \n");
-	SHOW_FILE_INFO(fd);
 	DEFRAG_FILE(fd);
-	printf("\nAfter defragmentation: \n");
-	SHOW_FILE_INFO(fd);
 
 	return TEST_SUCCESS;
 }
@@ -104,17 +94,16 @@ int test_write_pos(int fd, int SEEK, int offset)
 	size_t len = strlen(wbuf);
 	char rbuf[100];
 
-	printf("\nbefore write\n");
-	SHOW_FILE_INFO(fd);
-	int cur = lseek(fd, offset, SEEK);
+	ASSERT_FILE(fd, 1, BLOCK_SIZE - 4);
+	int cur = lseek(fd, 400, SEEK_END);
 	write(fd, wbuf, len);
-	printf("\nafter write\n");
-	SHOW_FILE_INFO(fd);
+	ASSERT_FILE(fd, 2, (BLOCK_SIZE - 4) + (BLOCK_SIZE - len - 400));
 
 	lseek(fd, cur, SEEK_SET);
 	read(fd, rbuf, len);
 
 	ASSERT_EQ_BUF(rbuf, wbuf, len);
+
 	return TEST_SUCCESS;
 }
 
