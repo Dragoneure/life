@@ -74,7 +74,8 @@ int space_available(struct inode *inode, struct ouichefs_sb_info *sbi,
 int reserve_write_blocks(struct inode *inode,
 			 struct ouichefs_file_index_block *index, int nb_allocs)
 {
-	int alloc_start = max((int)inode->i_blocks - 2, 0);
+	/* We start to allocate after the last block */
+	int alloc_start = max((int)inode->i_blocks - 1, 0);
 	return reserve_empty_blocks(inode, index, alloc_start, nb_allocs);
 }
 

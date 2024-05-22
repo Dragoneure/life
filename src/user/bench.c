@@ -12,7 +12,8 @@ void bench_write_read()
 	init_seq_buff(wbuf, len, &start);
 
 	for (int i = 0; i < MAX_FILESIZE; i += BLOCK_SIZE) {
-		for (int j = 0; j < BLOCK_SIZE; j += BLOCK_SIZE / 10) {
+		for (int j = 0; j < BLOCK_SIZE; j += BLOCK_SIZE / 5) {
+			lseek(fd, i + j, SEEK_SET);
 			struct time_data t;
 			TIME_START(t);
 			write(fd, wbuf, len);
