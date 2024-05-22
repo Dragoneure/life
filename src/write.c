@@ -72,10 +72,10 @@ int space_available(struct inode *inode, struct ouichefs_sb_info *sbi,
  * Return 1 in case of error.
  */
 int reserve_write_blocks(struct inode *inode,
-			 struct ouichefs_file_index_block *index, int nr_allocs)
+			 struct ouichefs_file_index_block *index, int nb_allocs)
 {
 	int alloc_start = max((int)inode->i_blocks - 2, 0);
-	return reserve_empty_blocks(inode, index, alloc_start, nr_allocs);
+	return reserve_empty_blocks(inode, index, alloc_start, nb_allocs);
 }
 
 ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
@@ -97,7 +97,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 	/* Check if we can allocate needed blocks */
 	nb_allocs = idiv_ceil(max(*pos + (uint32_t)size, inode->i_size),
 			      OUICHEFS_BLOCK_SIZE);
-	nb_allocs = max((int)nb_allocs - (int)inode->i_blocks - 1, 0);
+	nb_allocs = max((int)nb_allocs - ((int)inode->i_blocks - 1), 0);
 	if (space_available(inode, sbi, nb_allocs) < 0)
 		return -ENOSPC;
 
