@@ -143,7 +143,7 @@ int test_write_in_padding(int fd, int start_pos, int file_size,
 	char empty_buf[len];
 	int start = 0;
 	init_seq_buff(empty_buf, len, &start);
-	int write_empty = 0;
+	int write_empty = 0, size = 0, nb_blocks = 0;
 
 	for (int i = start_pos; i < file_size; i += len + write_offset) {
 		lseek(fd, i, SEEK_SET);
@@ -155,8 +155,9 @@ int test_write_in_padding(int fd, int start_pos, int file_size,
 		write_empty = !write_empty;
 	}
 
-	pr_file(fd, start_pos, file_size);
-	SHOW_FILE_INFO(fd);
+	size = lseek(fd, 0, SEEK_END);
+	nb_blocks = idiv_ceil(size, BLOCK_SIZE);
+	ASSERT_FILE(fd, nb_blocks, (nb_blocks * BLOCK_SIZE) - size);
 
 	char rbuf[len];
 	write_empty = 0;
@@ -197,7 +198,7 @@ int test_write_with_offset_far()
 int test_write_with_offset_end()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
-	return test_write_in_padding(fd, MAX_FILESIZE - 70, MAX_FILESIZE, 0);
+	return test_write_in_padding(fd, MAX_FILESIZE - 70, MAX_FILESIZE, 22);
 }
 
 int main(int argc, char **argv)

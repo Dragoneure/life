@@ -16,6 +16,16 @@
 #define BLOCK_SIZE (1 << 12) /* 4 KiB */
 #define MAX_FILESIZE (1 << 22) /* 4 MiB */
 
+static inline int idiv_ceil(int a, int b)
+{
+	int ret;
+
+	ret = a / b;
+	if (a % b != 0)
+		return ret + 1;
+	return ret;
+}
+
 /* Change ouichefs read and write function using sysfs */
 
 #define DEFAULT_READ '0'
