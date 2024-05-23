@@ -67,7 +67,7 @@ static inline void flush_cache(void)
 {
 	sync();
 	int fd = open("/proc/sys/vm/drop_caches", O_WRONLY);
-	write(fd, "1", 1);
+	write(fd, "3", 1);
 	close(fd);
 }
 
@@ -172,6 +172,36 @@ static inline void pr_buf(const char *buf, size_t len)
 		return TEST_FAIL;                                            \
 	}
 
+static inline int assert_file_info(int fd, int nb_blocks_expected,
+				   int wasted_expected)
+{
+	int ret = 0;
+
+	struct file_info info = { .hide_display = 1 };
+	ioctl(fd, OUICHEFS_IOC_FILE_INFO, &info);
+
+	if (nb_blocks_expected != info.nb_blocks) {
+		printf(ANSI_RED "Comparison nb_blocks failed: \n" ANSI_RESET);
+		printf("\tActual: %d\n\tExpected: %d\n", info.nb_blocks,
+		       nb_blocks_expected);
+		ret = 1;
+	}
+
+	if (wasted_expected != info.wasted) {
+		printf(ANSI_RED "Comparison wasted failed: \n" ANSI_RESET);
+		printf("\tActual: %d\n\tExpected: %d\n", info.wasted,
+		       wasted_expected);
+		ret = 1;
+	}
+
+	return ret;
+}
+
+#define ASSERT_FILE(fd, nb_blocks_expected, nb_wasted_expected)             \
+	if (assert_file_info(fd, nb_blocks_expected, nb_wasted_expected)) { \
+		return TEST_FAIL;                                           \
+	}
+
 /* Time utilities for benchmarking */
 
 struct time_data {
@@ -193,18 +223,16 @@ struct time_data {
 
 /* Ioctl commands */
 
-#define SHOW_FILE_INFO(fd)                                        \
-	do {                                                      \
-		int copy = fd;                                    \
-		int dev_fd = open("/dev/ouichefs-dev", O_RDONLY); \
-		ioctl(dev_fd, OUICHEFS_IOC_FILE_INFO, &copy);     \
+#define SHOW_FILE_INFO(fd)                                \
+	do {                                              \
+		struct file_info info;                    \
+		info.hide_display = 0;                    \
+		ioctl(fd, OUICHEFS_IOC_FILE_INFO, &info); \
 	} while (0)
 
-#define DEFRAG_FILE(fd)                                           \
-	do {                                                      \
-		int copy = fd;                                    \
-		int dev_fd = open("/dev/ouichefs-dev", O_RDONLY); \
-		ioctl(dev_fd, OUICHEFS_IOC_DEFRAG, &copy);        \
+#define DEFRAG_FILE(fd)                         \
+	do {                                    \
+		ioctl(fd, OUICHEFS_IOC_DEFRAG); \
 	} while (0)
 
 #endif /* UTILS_H */

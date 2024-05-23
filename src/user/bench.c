@@ -8,10 +8,12 @@ void bench_write_read()
 
 	size_t len = 256;
 	char wbuf[len];
-	memset(wbuf, 1, len);
+	int start = 0;
+	init_seq_buff(wbuf, len, &start);
 
 	for (int i = 0; i < MAX_FILESIZE; i += BLOCK_SIZE) {
-		for (int j = 0; j < BLOCK_SIZE; j += BLOCK_SIZE / 10) {
+		for (int j = 0; j < BLOCK_SIZE; j += BLOCK_SIZE / 5) {
+			lseek(fd, i + j, SEEK_SET);
 			struct time_data t;
 			TIME_START(t);
 			write(fd, wbuf, len);
@@ -33,6 +35,8 @@ void bench_write_read()
 		TIME_END(t);
 		r_time += t.diff;
 	}
+
+	printf("\n");
 
 	pr_test("Total write time: %ld ms\n", w_time / 1000);
 	pr_test("Total read time: %ld ms\n", r_time / 1000);

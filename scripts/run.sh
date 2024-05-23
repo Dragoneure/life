@@ -8,15 +8,15 @@
 # using user seed for all tests
 # ./run.sh 42
 
+TEST_DEFAULT=1
+TEST_SIMPLE=1
+TEST_INSERT=1
+
+BENCH_SIMPLE=1
+BENCH_INSERT=1
+
 # load ouichefs
 insmod /share/ouichefs.ko
-
-# load device
-DEVICE=ouichefs-dev
-MAJOR=$(cat /proc/devices | grep "$DEVICE")
-MAJOR=($MAJOR)
-rm -f /dev/$MAJOR
-mknod /dev/$DEVICE c $MAJOR 0
 
 # mount a ouichefs test directory
 TESTDIR=~/tests-ouichefs
@@ -38,8 +38,12 @@ echo -e "\n\033[1mUsing kernel default read/write:\033[0m\n"
 
 echo -n '0' > /sys/kernel/ouichefs/read_fn
 echo -n '0' > /sys/kernel/ouichefs/write_fn
-/share/test.o "$seed"
-/share/bench.o
+if [ $TEST_DEFAULT -eq 1 ]; then
+  /share/test.o "$seed"
+fi
+if [ $BENCH_SIMPLE -eq 1 ]; then
+  /share/bench.o
+fi
 
 rm $TESTDIR/*
 echo -e "\n\033[1mUsing simple read/write:\033[0m\n"
@@ -49,8 +53,12 @@ echo -n '1' > /sys/kernel/ouichefs/write_fn
 if [ ! -n "$1" ]; then
   seed=$((seed + 1))
 fi
-/share/test.o "$seed"
-/share/bench.o
+if [ $TEST_SIMPLE -eq 1 ]; then
+  /share/test.o "$seed"
+fi
+if [ $BENCH_SIMPLE -eq 1 ]; then
+  /share/bench.o
+fi
 
 rm $TESTDIR/*
 echo -e "\n\033[1mUsing lite read/write:\033[0m\n"
@@ -60,12 +68,16 @@ echo -n '2' > /sys/kernel/ouichefs/write_fn
 if [ ! -n "$1" ]; then
   seed=$((seed + 1))
 fi
-/share/test_insert.o "$seed"
+if [ $TEST_INSERT -eq 1 ]; then
+  /share/test_insert.o "$seed"
+fi
+if [ $BENCH_INSERT -eq 1 ]; then
+  echo BENCH_INSERT
+fi
 
 cd ~
 
 # cleanup
-rm -f /dev/$MAJOR
 rm $TESTDIR/*
 umount $TESTDIR
 rmdir $TESTDIR

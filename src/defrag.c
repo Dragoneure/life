@@ -38,6 +38,7 @@ int move_shift_block_content_to(struct ouichefs_file_index_block *index,
 	/* Shift up any remaining data in source block. */
 	memcpy(bh_data_from->b_data, bh_data_from->b_data + to_copy,
 	       from_len - to_copy);
+	memset(bh_data_from->b_data + to_copy, 0, from_len - to_copy);
 
 	mark_buffer_dirty(bh_data_from);
 	sync_dirty_buffer(bh_data_from);

@@ -49,8 +49,6 @@ static struct file_system_type ouichefs_file_system_type = {
 	.next = NULL,
 };
 
-static int chr_major;
-
 static int __init ouichefs_init(void)
 {
 	int ret;
@@ -84,14 +82,6 @@ static int __init ouichefs_init(void)
 		goto free_kobj;
 	}
 
-	ret = register_chrdev(0, "ouichefs-dev", &ouichefs_ioctl_ops);
-	if (ret < 0) {
-		pr_err("chrdev registration failed\n");
-		goto free_kobj;
-	}
-	chr_major = ret;
-	pr_info("chrdev registered with major %d\n", chr_major);
-
 	pr_info("module loaded\n");
 	return 0;
 
@@ -108,8 +98,6 @@ static void __exit ouichefs_exit(void)
 	int ret;
 
 	kobject_put(kobj_sysfs);
-
-	unregister_chrdev(chr_major, "ouichefs-dev");
 
 	ret = unregister_filesystem(&ouichefs_file_system_type);
 	if (ret)
