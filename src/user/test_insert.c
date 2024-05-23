@@ -135,18 +135,17 @@ int test_write_far()
 }
 
 /* Test the write in padding optimization */
-int test_write_in_padding()
+int test_write_in_padding(int fd, int start_pos, int file_size,
+			  int write_offset)
 {
-	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
-
 	char wbuf[] = "The disco-dancing banana slipped on a rainbow.";
 	size_t len = strlen(wbuf);
 	char empty_buf[len];
 	int start = 0;
 	init_seq_buff(empty_buf, len, &start);
-	int write_empty = 0, size = (len + 5) * 500;
+	int write_empty = 0, size = 0, nb_blocks = 0;
 
-	for (int i = 0; i < size; i += len + 5) {
+	for (int i = start_pos; i < file_size; i += len + write_offset) {
 		lseek(fd, i, SEEK_SET);
 		if (write_empty) {
 			write(fd, empty_buf, len);
@@ -156,23 +155,50 @@ int test_write_in_padding()
 		write_empty = !write_empty;
 	}
 
-	SHOW_FILE_INFO(fd);
+	size = lseek(fd, 0, SEEK_END);
+	nb_blocks = idiv_ceil(size, BLOCK_SIZE);
+	ASSERT_FILE(fd, nb_blocks, (nb_blocks * BLOCK_SIZE) - size);
 
 	char rbuf[len];
 	write_empty = 0;
 
-	for (int i = 0; i < size; i += len + 5) {
+	for (int i = start_pos; i < file_size; i += len + write_offset) {
 		lseek(fd, i, SEEK_SET);
-		read(fd, rbuf, len);
+		int readen = read(fd, rbuf, len);
 		if (write_empty) {
-			ASSERT_EQ_BUF(rbuf, empty_buf, len);
+			ASSERT_EQ_BUF(rbuf, empty_buf, readen);
 		} else {
-			ASSERT_EQ_BUF(rbuf, wbuf, len);
+			ASSERT_EQ_BUF(rbuf, wbuf, readen);
 		}
 		write_empty = !write_empty;
 	}
 
 	return TEST_SUCCESS;
+}
+
+int test_write_continuous()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+	return test_write_in_padding(fd, 0, BLOCK_SIZE * 10, 0);
+}
+
+int test_write_with_offset()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+	return test_write_in_padding(fd, 0, BLOCK_SIZE * 10, 13);
+}
+
+int test_write_with_offset_far()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+	return test_write_in_padding(fd, BLOCK_SIZE * 12 + 87,
+				     BLOCK_SIZE * 12 + 287, 13);
+}
+
+int test_write_with_offset_end()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+	return test_write_in_padding(fd, MAX_FILESIZE - 70, MAX_FILESIZE, 22);
 }
 
 int main(int argc, char **argv)
@@ -191,7 +217,10 @@ int main(int argc, char **argv)
 	RUN_TEST(test_write_end);
 	RUN_TEST(test_write_begin_block);
 	RUN_TEST(test_write_far);
-	RUN_TEST(test_write_in_padding);
+	RUN_TEST(test_write_continuous);
+	RUN_TEST(test_write_with_offset);
+	RUN_TEST(test_write_with_offset_far);
+	RUN_TEST(test_write_with_offset_end);
 
 	return 0;
 }

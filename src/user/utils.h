@@ -16,6 +16,16 @@
 #define BLOCK_SIZE (1 << 12) /* 4 KiB */
 #define MAX_FILESIZE (1 << 22) /* 4 MiB */
 
+static inline int idiv_ceil(int a, int b)
+{
+	int ret;
+
+	ret = a / b;
+	if (a % b != 0)
+		return ret + 1;
+	return ret;
+}
+
 /* Change ouichefs read and write function using sysfs */
 
 #define DEFAULT_READ '0'
@@ -115,17 +125,35 @@ static inline void init_rand_file(int fd)
 static inline void pr_buf(const char *buf, size_t len)
 {
 	printf("\"");
+	int new_line = 0;
 	for (size_t i = 0; i < len; i++) {
+		if (new_line > 150) {
+			printf("\n");
+			new_line = 0;
+		}
 		if (isprint(buf[i])) {
 			printf("%c", buf[i]);
+			new_line++;
 			continue;
 		} else if (buf[i] == '\0') {
 			printf("\\0");
+			new_line += 2;
 		} else {
 			printf("?");
+			new_line++;
 		}
 	}
 	printf("\"");
+}
+
+static inline void pr_file(int fd, int offset, int file_size)
+{
+	int len = file_size - offset;
+	char rbuf[len];
+	lseek(fd, offset, SEEK_SET);
+	read(fd, rbuf, len);
+	pr_buf(rbuf, len);
+	printf("\n");
 }
 
 #define pr_test(fmt, ...) \

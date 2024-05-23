@@ -58,6 +58,7 @@ void bubble_up_block(struct ouichefs_file_index_block *index, int block_index,
 {
 	for (int bli = block_index; bli < nb_blocks - 1; bli++) {
 		int temp = index->blocks[bli];
+
 		index->blocks[bli] = index->blocks[bli + 1];
 		index->blocks[bli + 1] = temp;
 	}
@@ -80,7 +81,7 @@ int ouichefs_defrag(struct file *file)
 	}
 	index = (struct ouichefs_file_index_block *)bh_index->b_data;
 
-	/* 
+	/*
 	 * First pass: copy data between blocks to fill the padding
 	 * going left to right.
 	 */
