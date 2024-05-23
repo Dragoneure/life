@@ -116,9 +116,7 @@ void bench_insert_defrag()
 	TIME_END(t);
 	r_time = t.diff;
 
-	SHOW_FILE_INFO(fd);
 	DEFRAG_FILE(fd);
-	SHOW_FILE_INFO(fd);
 
 	TIME_START(t);
 	lseek(fd, 0, SEEK_SET);
