@@ -93,9 +93,6 @@ struct ouichefs_dir_block {
 	} files[OUICHEFS_MAX_SUBFILES];
 };
 
-/* ioctl commands */
-extern const struct file_operations ouichefs_ioctl_ops;
-
 /* superblock functions */
 int ouichefs_fill_super(struct super_block *sb, void *data, int silent);
 
@@ -116,6 +113,7 @@ extern ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 			     loff_t *pos);
 extern ssize_t ouichefs_write(struct file *file, const char __user *buff,
 			      size_t size, loff_t *pos);
+extern long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 extern ssize_t ouichefs_light_read(struct file *file, char __user *buff, size_t size,
 			     loff_t *pos);
 extern ssize_t ouichefs_light_write(struct file *file, const char __user *buff,

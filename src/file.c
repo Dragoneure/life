@@ -263,5 +263,6 @@ struct file_operations ouichefs_file_ops = {
 	.read = ouichefs_read,
 	.read_iter = generic_file_read_iter,
 	.write = ouichefs_write,
-	.write_iter = generic_file_write_iter
+	.write_iter = generic_file_write_iter,
+	.unlocked_ioctl = ouichefs_ioctl
 };

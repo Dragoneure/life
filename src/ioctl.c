@@ -9,19 +9,6 @@
 #include "ioctl.h"
 #include "bitmap.h"
 
-int get_user_file(int fd, struct file **file)
-{
-	int ret = 0;
-
-	*file = fget(fd);
-	if (!*file) {
-		ret = -EINVAL;
-		pr_err("invalid fd %d, file not found\n", fd);
-	}
-
-	return ret;
-}
-
 static int ouichefs_ioctl_file_info(struct file *file,
 				    unsigned int __user *argp)
 {
@@ -35,11 +22,8 @@ static int ouichefs_ioctl_file_info(struct file *file,
 	}
 
 	display = !user_file_info.hide_display;
-	struct file *user_file;
-	if ((ret = get_user_file(user_file_info.fd, &user_file)) < 0)
-		goto end;
 
-	struct inode *inode = user_file->f_inode;
+	struct inode *inode = file->f_inode;
 	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
 	struct ouichefs_file_index_block *index = NULL;
 	struct buffer_head *bh_index = NULL;
@@ -61,7 +45,7 @@ static int ouichefs_ioctl_file_info(struct file *file,
 	if (!bh_index) {
 		ret = -EFAULT;
 		pr_err("could not read index block\n");
-		goto free_file;
+		goto end;
 	}
 	index = (struct ouichefs_file_index_block *)bh_index->b_data;
 
@@ -99,33 +83,13 @@ static int ouichefs_ioctl_file_info(struct file *file,
 		goto end;
 	}
 
-free_file:
-	fput(user_file);
-
 end:
 	return ret;
 }
 
-static int ouichefs_ioctl_defrag(struct file *file, unsigned int __user *argp)
+static int ouichefs_ioctl_defrag(struct file *file)
 {
-	int ret = 0, fd;
-	struct file *user_file;
-
-	if (get_user(fd, argp)) {
-		ret = -EFAULT;
-		pr_err("get_user() failed\n");
-		goto end;
-	}
-
-	if ((ret = get_user_file(fd, &user_file)) < 0)
-		goto end;
-
-	ret = ouichefs_defrag(user_file);
-
-	fput(user_file);
-
-end:
-	return ret;
+	return ouichefs_defrag(file);
 }
 
 long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
@@ -139,13 +103,10 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case OUICHEFS_IOC_FILE_INFO:
 		return ouichefs_ioctl_file_info(file, argp);
 	case OUICHEFS_IOC_DEFRAG:
-		return ouichefs_ioctl_defrag(file, argp);
+		return ouichefs_ioctl_defrag(file);
 	default:
 		return -EINVAL;
 	}
 
 	return 0;
 }
-
-const struct file_operations ouichefs_ioctl_ops = { .unlocked_ioctl =
-							    ouichefs_ioctl };
