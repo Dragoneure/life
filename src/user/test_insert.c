@@ -16,6 +16,7 @@ int test_write_insert_begin()
 	write(fd, prev_write, prev_len);
 	lseek(fd, 0, SEEK_SET);
 	write(fd, wbuf, len);
+	ASSERT_FILE(fd, 2, (BLOCK_SIZE - prev_len) + (BLOCK_SIZE - len));
 
 	char rbuf[prev_len + len];
 
@@ -45,11 +46,17 @@ int test_write_insert()
 	memcpy(first_write + prev_len, next_write, next_len);
 
 	write(fd, first_write, prev_len + next_len);
+	ASSERT_FILE(fd, 1, BLOCK_SIZE - (prev_len + next_len));
 
 	lseek(fd, prev_len, SEEK_SET);
 	write(fd, insert_write, insert_len);
+	ASSERT_FILE(fd, 2,
+		    (BLOCK_SIZE - (prev_len + insert_len)) +
+			    (BLOCK_SIZE - next_len));
 
 	DEFRAG_FILE(fd);
+	SHOW_FILE_INFO(fd);
+	ASSERT_FILE(fd, 1, (BLOCK_SIZE - (prev_len + next_len + insert_len)));
 
 	lseek(fd, 0, SEEK_SET);
 	read(fd, rbuf, prev_len + next_len + insert_len);
@@ -82,7 +89,9 @@ int test_defrag()
 		ASSERT_EQ_BUF(rbuf, wbuf, len);
 	}
 
+	ASSERT_FILE(fd, 3, BLOCK_SIZE * 3 - len * 3);
 	DEFRAG_FILE(fd);
+	ASSERT_FILE(fd, 1, BLOCK_SIZE - len * 3);
 
 	return TEST_SUCCESS;
 }
@@ -97,7 +106,7 @@ int test_write_pos(int fd, int SEEK, int offset)
 	ASSERT_FILE(fd, 1, BLOCK_SIZE - 4);
 	int cur = lseek(fd, 400, SEEK_END);
 	write(fd, wbuf, len);
-	ASSERT_FILE(fd, 2, (BLOCK_SIZE - 4) + (BLOCK_SIZE - len - 400));
+	ASSERT_FILE(fd, 1, (BLOCK_SIZE - (404 + len)));
 
 	lseek(fd, cur, SEEK_SET);
 	read(fd, rbuf, len);
@@ -125,6 +134,47 @@ int test_write_far()
 	return test_write_pos(fd, SEEK_SET, 18075);
 }
 
+/* Test the write in padding optimization */
+int test_write_in_padding()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+
+	char wbuf[] = "The disco-dancing banana slipped on a rainbow.";
+	size_t len = strlen(wbuf);
+	char empty_buf[len];
+	int start = 0;
+	init_seq_buff(empty_buf, len, &start);
+	int write_empty = 0, size = (len + 5) * 500;
+
+	for (int i = 0; i < size; i += len + 5) {
+		lseek(fd, i, SEEK_SET);
+		if (write_empty) {
+			write(fd, empty_buf, len);
+		} else {
+			write(fd, wbuf, len);
+		}
+		write_empty = !write_empty;
+	}
+
+	SHOW_FILE_INFO(fd);
+
+	char rbuf[len];
+	write_empty = 0;
+
+	for (int i = 0; i < size; i += len + 5) {
+		lseek(fd, i, SEEK_SET);
+		read(fd, rbuf, len);
+		if (write_empty) {
+			ASSERT_EQ_BUF(rbuf, empty_buf, len);
+		} else {
+			ASSERT_EQ_BUF(rbuf, wbuf, len);
+		}
+		write_empty = !write_empty;
+	}
+
+	return TEST_SUCCESS;
+}
+
 int main(int argc, char **argv)
 {
 	int seed = 42;
@@ -141,5 +191,7 @@ int main(int argc, char **argv)
 	RUN_TEST(test_write_end);
 	RUN_TEST(test_write_begin_block);
 	RUN_TEST(test_write_far);
+	RUN_TEST(test_write_in_padding);
+
 	return 0;
 }

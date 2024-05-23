@@ -86,7 +86,7 @@ int find_block_pos(loff_t pos, struct ouichefs_file_index_block *index,
 
 		/* Cursor position reached */
 		block_size = get_block_size(index->blocks[current_block]);
-		if ((remaining_size - block_size) < 0)
+		if ((remaining_size - block_size) <= 0)
 			break;
 
 		remaining_size -= block_size;
