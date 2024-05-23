@@ -96,6 +96,7 @@ ssize_t ouichefs_light_read(struct file *file, char __user *buff, size_t size,
 	struct ouichefs_file_index_block *index;
 	struct buffer_head *bh_index, *bh_data;
 	size_t remaining_read = size;
+	int nb_blocks, logical_block_index, logical_pos;
 
 	/* Read index block from disk */
 	bh_index = sb_bread(inode->i_sb, ci->index_block);
@@ -108,32 +109,33 @@ ssize_t ouichefs_light_read(struct file *file, char __user *buff, size_t size,
 	 * sizes that are not multiple of BLOCK_SIZE.
 	 */
 
-	/* Number of data blocks in the file (without the index block) */
-	int nb_blocks = inode->i_blocks - 1;
-	/* Index of the block where the cursor is */
-	int logical_block_index;
-	int logical_pos;
+	/* Number of data blocks in the file (without the index block). */
+	nb_blocks = inode->i_blocks - 1;
 
-	if (find_block_pos(pos, index, inode->i_blocks, &logical_block_index,
+	/* Find the index of the block where the cursor is. */
+	if (find_block_pos(*pos, index, inode->i_blocks, &logical_block_index,
 			   &logical_pos))
 		goto read_end;
 
 	while (remaining_read && (logical_block_index < nb_blocks)) {
-		uint32_t bno = index->blocks[logical_block_index];
+		uint32_t bno;
+		size_t available_size, len;
+		char *block;
 
-		bh_data = sb_bread(inode->i_sb, bno);
+		/* Read data block from disk */
+		bno = index->blocks[logical_block_index];
+		bh_data = sb_bread(inode->i_sb, get_block_number(bno));
 		if (!bh_data)
 			goto read_end;
 
 		/* Available size between the cursor and the end of the block */
-		size_t available_size = get_block_size(bno) - logical_pos;
-
+		available_size = get_block_size(bno) - logical_pos;
 		if (available_size <= 0)
 			goto free_bh_data;
 
 		/* Do not read more than what's available and asked */
-		size_t len = min(available_size, remaining_read);
-		char *block = (char *)bh_data->b_data;
+		len = min(available_size, remaining_read);
+		block = (char *)bh_data->b_data;
 
 		if (copy_to_user(buff + (size - remaining_read),
 				 block + logical_pos, len)) {

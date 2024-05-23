@@ -65,7 +65,7 @@ int test_rand_read()
 	return TEST_SUCCESS;
 }
 
-int test_insert()
+int test_simple_read_insert()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
 	init_rand_file(fd);
@@ -150,7 +150,7 @@ int main(int argc, char **argv)
 
 	RUN_TEST(test_simple_file_write);
 	RUN_TEST(test_write_read);
-	RUN_TEST(test_insert);
+	RUN_TEST(test_simple_read_insert);
 	RUN_TEST(test_rand_read);
 	RUN_TEST(test_write_filesize_end);
 	RUN_TEST(test_write_block_end);

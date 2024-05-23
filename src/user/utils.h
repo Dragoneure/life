@@ -20,6 +20,7 @@
 
 #define DEFAULT_READ '0'
 #define SIMPLE_READ '1'
+#define LIGHT_READ '2'
 
 static inline void set_read_fn(char read_fn)
 {

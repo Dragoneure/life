@@ -105,7 +105,7 @@ void ouichefs_destroy_inode_cache(void);
 struct inode *ouichefs_iget(struct super_block *sb, unsigned long ino);
 
 /* block function */
-int find_block_pos(loff_t *pos, struct ouichefs_file_index_block *index,
+int find_block_pos(loff_t pos, struct ouichefs_file_index_block *index,
 		   int nb_blocks, int *block_index, int *logical_pos);
 
 /* file functions */
@@ -115,6 +115,10 @@ extern const struct address_space_operations ouichefs_aops;
 extern ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 			     loff_t *pos);
 extern ssize_t ouichefs_write(struct file *file, const char __user *buff,
+			      size_t size, loff_t *pos);
+extern ssize_t ouichefs_light_read(struct file *file, char __user *buff, size_t size,
+			     loff_t *pos);
+extern ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 			      size_t size, loff_t *pos);
 
 /* Getters for superbock and inode */
