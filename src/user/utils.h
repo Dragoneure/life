@@ -115,17 +115,33 @@ static inline void init_rand_file(int fd)
 static inline void pr_buf(const char *buf, size_t len)
 {
 	printf("\"");
+	int new_line = 0;
 	for (size_t i = 0; i < len; i++) {
+		if (new_line > 150) {
+			printf("\n");
+			new_line = 0;
+		}
 		if (isprint(buf[i])) {
 			printf("%c", buf[i]);
+			new_line++;
 			continue;
 		} else if (buf[i] == '\0') {
 			printf("\\0");
+			new_line += 2;
 		} else {
 			printf("?");
+			new_line++;
 		}
 	}
 	printf("\"");
+}
+
+static inline void pr_file(int fd, int offset, int len)
+{
+	char rbuf[len];
+	lseek(fd, offset, SEEK_SET);
+	read(fd, rbuf, len);
+	pr_buf(rbuf, len);
 }
 
 #define pr_test(fmt, ...) \

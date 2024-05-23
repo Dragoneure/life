@@ -135,18 +135,17 @@ int test_write_far()
 }
 
 /* Test the write in padding optimization */
-int test_write_in_padding()
+int test_write_in_padding(int fd, int start_pos, int size_file,
+			  int write_offset)
 {
-	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
-
 	char wbuf[] = "The disco-dancing banana slipped on a rainbow.";
 	size_t len = strlen(wbuf);
 	char empty_buf[len];
 	int start = 0;
 	init_seq_buff(empty_buf, len, &start);
-	int write_empty = 0, size = (len + 5) * 500;
+	int write_empty = 0;
 
-	for (int i = 0; i < size; i += len + 5) {
+	for (int i = start_pos; i < size_file; i += len + write_offset) {
 		lseek(fd, i, SEEK_SET);
 		if (write_empty) {
 			write(fd, empty_buf, len);
@@ -156,12 +155,13 @@ int test_write_in_padding()
 		write_empty = !write_empty;
 	}
 
+	pr_file(fd, 0, 20000);
 	SHOW_FILE_INFO(fd);
 
 	char rbuf[len];
 	write_empty = 0;
 
-	for (int i = 0; i < size; i += len + 5) {
+	for (int i = start_pos; i < size_file; i += len + write_offset) {
 		lseek(fd, i, SEEK_SET);
 		read(fd, rbuf, len);
 		if (write_empty) {
@@ -173,6 +173,18 @@ int test_write_in_padding()
 	}
 
 	return TEST_SUCCESS;
+}
+
+int test_write_continuous()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+	return test_write_in_padding(fd, 0, BLOCK_SIZE * 10, 0);
+}
+
+int test_write_with_offset()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+	return test_write_in_padding(fd, 0, BLOCK_SIZE * 10, 13);
 }
 
 int main(int argc, char **argv)
@@ -191,7 +203,8 @@ int main(int argc, char **argv)
 	RUN_TEST(test_write_end);
 	RUN_TEST(test_write_begin_block);
 	RUN_TEST(test_write_far);
-	RUN_TEST(test_write_in_padding);
+	RUN_TEST(test_write_continuous);
+	RUN_TEST(test_write_with_offset);
 
 	return 0;
 }
