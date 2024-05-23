@@ -47,13 +47,13 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 		bno = index->blocks[logical_block_index];
 		bh_data = sb_bread(inode->i_sb, bno);
 		if (!bh_data)
-			goto read_end;
+			goto free_bh_index;
 
 		/* Available size between the cursor and the end of the block */
 		available_size = OUICHEFS_BLOCK_SIZE - logical_pos;
 		if (logical_block_index == nb_blocks - 1)
 			available_size = last_block_size - logical_pos;
-		if (available_size <= 0)
+		if (available_size == 0)
 			goto free_bh_data;
 
 		/* Do not read more than what's available and asked */
@@ -74,14 +74,15 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 		brelse(bh_data);
 	}
 
-	goto read_end;
+	goto free_bh_index;
 
 free_bh_data:
 	brelse(bh_data);
 
-read_end:
+free_bh_index:
 	brelse(bh_index);
 
+read_end:
 	readen = size - remaining_read;
 	*pos += readen;
 

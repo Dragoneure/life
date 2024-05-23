@@ -61,7 +61,6 @@ if [ ! -n "$1" ]; then
   seed=$((seed + 1))
 fi
 /share/test_insert.o "$seed"
-/share/bench.o
 
 cd ~
 

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0
+
 #define pr_fmt(fmt) "%s:%s: " fmt, KBUILD_MODNAME, __func__
 
 #include "asm-generic/errno-base.h"
+#include "linux/file.h"
+#include "linux/buffer_head.h"
 #include "ouichefs.h"
 #include "ioctl.h"
 #include "bitmap.h"
-#include "linux/file.h"
-#include "linux/buffer_head.h"
 
-static int ouichefs_ioctl_file_info(struct file *file,
-				    unsigned int __user *argp)
+int get_user_file(unsigned int __user *argp, struct file **file)
 {
 	int ret = 0;
 	unsigned int fd;
@@ -20,13 +20,24 @@ static int ouichefs_ioctl_file_info(struct file *file,
 		goto end;
 	}
 
-	struct file *user_file = fget(fd);
-
-	if (!user_file) {
+	*file = fget(fd);
+	if (!*file) {
 		ret = -EINVAL;
 		pr_err("invalid fd %d, file not found\n", fd);
 		goto end;
 	}
+
+end:
+	return ret;
+}
+
+static int ouichefs_ioctl_file_info(struct file *file,
+				    unsigned int __user *argp)
+{
+	int ret = 0;
+	struct file *user_file;
+	if ((ret = get_user_file(argp, &user_file)) < 0)
+		goto end;
 
 	struct inode *inode = user_file->f_inode;
 	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
@@ -39,11 +50,10 @@ static int ouichefs_ioctl_file_info(struct file *file,
 	uint32_t total_waste = 0;
 
 	pr_info("File information:\n"
-		"\tfd: %u\n"
 		"\tsize: %lld\n"
 		"\tdata blocks number: %llu\n"
 		"\tblocks: ",
-		fd, inode->i_size, inode->i_blocks - 1);
+		inode->i_size, inode->i_blocks - 1);
 
 	/* Read index block from disk */
 	bh_index = sb_bread(inode->i_sb, ci->index_block);
@@ -85,6 +95,21 @@ end:
 	return ret;
 }
 
+static int ouichefs_ioctl_defrag(struct file *file, unsigned int __user *argp)
+{
+	int ret = 0;
+	struct file *user_file;
+	if ((ret = get_user_file(argp, &user_file)) < 0)
+		goto end;
+
+	ret = ouichefs_defrag(user_file);
+
+	fput(user_file);
+
+end:
+	return ret;
+}
+
 long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	if (_IOC_TYPE(cmd) != OUICHEFS_IOCTL_MAGIC)
@@ -95,6 +120,8 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	switch (cmd) {
 	case OUICHEFS_IOC_FILE_INFO:
 		return ouichefs_ioctl_file_info(file, argp);
+	case OUICHEFS_IOC_DEFRAG:
+		return ouichefs_ioctl_defrag(file, argp);
 	default:
 		return -EINVAL;
 	}

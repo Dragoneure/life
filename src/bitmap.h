@@ -114,11 +114,11 @@ static inline int get_block_number(int block)
 }
 
 /*
- * Return 0 if empty and 1 otherwise.
+ * Return 1 if empty and 0 otherwise.
  */
 static inline int block_empty(int block)
 {
-	return (block & MASK_BLOCK_FLAG);
+	return !((block & MASK_BLOCK_FLAG) == MASK_BLOCK_FLAG);
 }
 
 /*
@@ -126,7 +126,7 @@ static inline int block_empty(int block)
  */
 static inline int get_block_size(int block)
 {
-	if (block_empty(block) == 0)
+	if (block_empty(block))
 		return 0;
 	int temp = block & MASK_BLOCK_SIZE;
 	return (temp >> 19) + 1;

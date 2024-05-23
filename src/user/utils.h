@@ -157,7 +157,7 @@ static inline void pr_buf(const char *buf, size_t len)
 #define ASSERT_EQ(actual, expected)                                           \
 	if (actual != expected) {                                             \
 		pr_test(ANSI_RED "Comparison failed: \n" ANSI_RESET);         \
-		printf("\tActual: %zu\n\tExpected: %zu\n", actual, expected); \
+		printf("\tActual: %zi\n\tExpected: %zi\n", actual, expected); \
 		return TEST_FAIL;                                             \
 	}
 
@@ -193,11 +193,18 @@ struct time_data {
 
 /* Ioctl commands */
 
-#define SHOW_FILE_INFO(fd)                                     \
-	do {                                                   \
-		int copy = fd;\
-		int dev_fd = open("/dev/ouichefs-dev", O_RDONLY);  \
-		ioctl(dev_fd, OUICHEFS_IOC_FILE_INFO, &copy); \
+#define SHOW_FILE_INFO(fd)                                        \
+	do {                                                      \
+		int copy = fd;                                    \
+		int dev_fd = open("/dev/ouichefs-dev", O_RDONLY); \
+		ioctl(dev_fd, OUICHEFS_IOC_FILE_INFO, &copy);     \
+	} while (0)
+
+#define DEFRAG_FILE(fd)                                           \
+	do {                                                      \
+		int copy = fd;                                    \
+		int dev_fd = open("/dev/ouichefs-dev", O_RDONLY); \
+		ioctl(dev_fd, OUICHEFS_IOC_DEFRAG, &copy);        \
 	} while (0)
 
 #endif /* UTILS_H */
