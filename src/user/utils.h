@@ -48,16 +48,20 @@ static inline char get_read_fn()
 	return read_fn;
 }
 
+#define DEFAULT_WRITE '0'
+#define SIMPLE_WRITE '1'
+#define LIGHT_WRITE '2'
+
 static inline void set_write_fn(char write_fn)
 {
-	int fd = open("/sys/kernel/ouichefs/read_fn", O_WRONLY);
+	int fd = open("/sys/kernel/ouichefs/write_fn", O_WRONLY);
 	write(fd, &write_fn, 1);
 	close(fd);
 }
 
 static inline char get_write_fn()
 {
-	int fd = open("/sys/kernel/ouichefs/read_fn", O_RDONLY);
+	int fd = open("/sys/kernel/ouichefs/write_fn", O_RDONLY);
 	char write_fn;
 	read(fd, &write_fn, 1);
 	close(fd);

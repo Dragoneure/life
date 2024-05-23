@@ -72,7 +72,7 @@ if [ $TEST_INSERT -eq 1 ]; then
   /share/test_insert.o "$seed"
 fi
 if [ $BENCH_INSERT -eq 1 ]; then
-  echo BENCH_INSERT
+  /share/bench_insert.o
 fi
 
 cd ~

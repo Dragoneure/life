@@ -192,10 +192,10 @@ write_end:
  * Shift all blocks from block_index by nb_blocks to the right.
  */
 void shift_blocks(struct ouichefs_file_index_block *index, int block_index,
-		  int nb_blocks)
+		  int nb_shift, int last_bli)
 {
-	for (int bli = nb_blocks; bli >= block_index; bli--) {
-		index->blocks[bli + nb_blocks] = index->blocks[bli];
+	for (int bli = last_bli; bli >= block_index; bli--) {
+		index->blocks[bli + nb_shift] = index->blocks[bli];
 		index->blocks[bli] = 0;
 	}
 }
@@ -300,7 +300,8 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	struct buffer_head *bh_index = NULL, *bh_data = NULL;
 	size_t remaining_write = size, written = 0, nb_allocs = 0, to_copy = 0;
 	int logical_block_index, logical_pos, alloc_index_start = 0, nb_blocks,
-					      remaining_size, available_size;
+					      remaining_size, available_size,
+					      last_bli;
 	bool move_old_content = 0, shift_old_content = 0;
 	ssize_t ret = 0;
 
@@ -331,8 +332,8 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 		/* Should we move old content to a new block */
 		move_old_content = to_copy > 0;
 		/* Shift only if we are not in the last block */
-		shift_old_content = logical_block_index !=
-				    max((int)inode->i_blocks - 2, 0);
+		last_bli = max((int)inode->i_blocks - 2, 0);
+		shift_old_content = logical_block_index != last_bli;
 	}
 
 	/*
@@ -358,7 +359,7 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	if (index->blocks[logical_block_index] == 0)
 		alloc_index_start--;
 	if (shift_old_content && nb_allocs > 0)
-		shift_blocks(index, alloc_index_start, nb_allocs);
+		shift_blocks(index, alloc_index_start, nb_allocs, last_bli);
 	reserve_empty_blocks(inode, index, alloc_index_start, nb_allocs);
 
 	/*
