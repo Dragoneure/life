@@ -247,14 +247,16 @@ int fill_to_reach_pos(struct inode *inode,
 		      int *logical_block_index, int *logical_pos)
 {
 	int bli, last_bli, last_block_size, block_size, nb_blocks_to_fill,
-		to_fill, alloc_start, available_size;
+		to_fill, alloc_start, available_size, remaining;
 	bool last_block_full = 0;
 	int filled = 0;
 
 	/* Find if there is available size in the last block to avoid allocating */
-	last_bli = inode->i_blocks - 2;
+	last_bli = max((int)inode->i_blocks - 2, 0);
 	last_block_size = get_block_size(index->blocks[last_bli]);
 	available_size = OUICHEFS_BLOCK_SIZE - last_block_size;
+	if (index->blocks[last_bli] == 0)
+		available_size = 0;
 
 	/* Find how many blocks we need to allocate to fill the gap. */
 	to_fill = pos - inode->i_size;
@@ -267,10 +269,8 @@ int fill_to_reach_pos(struct inode *inode,
 	alloc_start = max((int)inode->i_blocks - 1, 0);
 	reserve_empty_blocks(inode, index, alloc_start, nb_blocks_to_fill);
 
-	bli = (available_size > 0) ? alloc_start - 1 : alloc_start;
+	bli = (available_size > 0) ? max(alloc_start - 1, 0) : alloc_start;
 	while (filled < to_fill) {
-		int remaining;
-
 		remaining = OUICHEFS_BLOCK_SIZE -
 			    get_block_size(index->blocks[bli]);
 		block_size = min(to_fill - filled, remaining);
@@ -302,6 +302,10 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 					      remaining_size, available_size;
 	bool move_old_content = 0, shift_old_content = 0;
 	ssize_t ret = 0;
+
+	/* Check if the write can be completed (enough space?) */
+	if (*pos + size > OUICHEFS_MAX_FILESIZE)
+		return -ENOSPC;
 
 	/* Read index block from disk */
 	bh_index = sb_bread(inode->i_sb, ci->index_block);

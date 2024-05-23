@@ -136,12 +136,14 @@ static inline void pr_buf(const char *buf, size_t len)
 	printf("\"");
 }
 
-static inline void pr_file(int fd, int offset, int len)
+static inline void pr_file(int fd, int offset, int file_size)
 {
+	int len = file_size - offset;
 	char rbuf[len];
 	lseek(fd, offset, SEEK_SET);
 	read(fd, rbuf, len);
 	pr_buf(rbuf, len);
+	printf("\n");
 }
 
 #define pr_test(fmt, ...) \
