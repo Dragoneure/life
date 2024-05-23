@@ -76,6 +76,7 @@ int reserve_write_blocks(struct inode *inode,
 {
 	/* We start to allocate after the last block */
 	int alloc_start = max((int)inode->i_blocks - 1, 0);
+
 	return reserve_empty_blocks(inode, index, alloc_start, nb_allocs);
 }
 
@@ -170,9 +171,9 @@ write_end:
 
 	/* Update file size based on what we could write */
 	new_file_size = *pos + written;
-	if (new_file_size > inode->i_size) {
+	if (new_file_size > inode->i_size)
 		inode->i_size = new_file_size;
-	}
+
 	if (written > 0) {
 		inode->i_mtime = inode->i_ctime = current_time(inode);
 		mark_inode_dirty(inode);
@@ -200,8 +201,8 @@ void shift_blocks(struct ouichefs_file_index_block *index, int block_index,
 }
 
 /*
- * Copy old content from a block (block_index_from), 
- * from logical_pos to its block size, 
+ * Copy old content from a block (block_index_from),
+ * from logical_pos to its block size,
  * to another block (block_index_to), which is empty.
  */
 int move_old_content_to(struct ouichefs_file_index_block *index,
@@ -334,8 +335,8 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 				    max((int)inode->i_blocks - 2, 0);
 	}
 
-	/* 
-	 * Compute number of blocks needed and check if we can pre-allocate. 
+	/*
+	 * Compute number of blocks needed and check if we can pre-allocate.
 	 * No block is allocated if there is enough space in the block we insert to.
 	 */
 	available_size = OUICHEFS_BLOCK_SIZE - logical_pos;
@@ -345,11 +346,12 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	/* Cursor in new unallocated block */
 	if (index->blocks[logical_block_index] == 0)
 		nb_allocs++;
-	if ((ret = space_available(inode, sbi, nb_allocs)) < 0)
+	ret = space_available(inode, sbi, nb_allocs);
+	if (ret < 0)
 		goto free_bh_index;
 
-	/* 
-	 * Pre-allocate memory after block that we insert to. 
+	/*
+	 * Pre-allocate memory after block that we insert to.
 	 * If the current block was not allocated before, start from it.
 	 */
 	alloc_index_start = logical_block_index + 1;
@@ -434,9 +436,8 @@ write_end:
 		mark_inode_dirty(inode);
 	}
 
-	if (ret == 0) {
+	if (ret == 0)
 		ret = written;
-	}
 
 	return ret;
 }
