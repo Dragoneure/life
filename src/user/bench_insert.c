@@ -130,8 +130,8 @@ void bench_insert_defrag()
 
 int main(int argc, char **argv)
 {
-	// RUN_BENCH(bench_insert_user);
-	// RUN_BENCH(bench_insert_lite_write);
+	RUN_BENCH(bench_insert_user);
+	RUN_BENCH(bench_insert_lite_write);
 	RUN_BENCH(bench_insert_defrag);
 	return 0;
 }

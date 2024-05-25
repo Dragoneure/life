@@ -85,8 +85,7 @@ cat bloup
 rm bloup
 
 echo -e "\n\033[1mUsing lite read with page cache:\033[0m\n"
-echo -n '0' > /sys/kernel/ouichefs/write_fn
-echo -n '2' > /sys/kernel/ouichefs/read_fn
+echo -n '3' > /sys/kernel/ouichefs/read_fn
 if [ ! -n "$1" ]; then
   seed=$((seed + 1))
 fi

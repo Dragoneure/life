@@ -159,7 +159,7 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 
 		if (copy_from_user(block + logical_pos,
 				   (buff + (size - remaining_write)), len)) {
-			pr_err("%s: copy_from_user() failed\n", __func__);
+			pr_err("copy_from_user() failed\n");
 			goto free_bh_data;
 		}
 
@@ -421,7 +421,7 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 		/* Copy user data in the block and update its size. */
 		if (copy_from_user(block + logical_pos,
 				   (buff + (size - remaining_write)), len)) {
-			pr_err("%s: copy_from_user() failed\n", __func__);
+			pr_err("copy_from_user() failed\n");
 			ret = -EIO;
 			goto free_bh_data;
 		}

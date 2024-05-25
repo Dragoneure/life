@@ -4,6 +4,7 @@
 
 #include "linux/buffer_head.h"
 #include "linux/pagemap.h"
+#include "linux/mpage.h"
 #include "ouichefs.h"
 #include "bitmap.h"
 
@@ -81,7 +82,7 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 
 		if (copy_to_user(buff + (size - remaining_read),
 				 block + logical_pos, len)) {
-			pr_err("%s: copy_to_user() failed\n", __func__);
+			pr_err("copy_to_user() failed\n");
 			goto free_bh_data;
 		}
 
@@ -162,7 +163,7 @@ ssize_t ouichefs_light_read(struct file *file, char __user *buff, size_t size,
 
 		if (copy_to_user(buff + (size - remaining_read),
 				 block + logical_pos, len)) {
-			pr_err("%s: copy_to_user() failed\n", __func__);
+			pr_err("copy_to_user() failed\n");
 			goto free_bh_data;
 		}
 
@@ -196,14 +197,13 @@ ssize_t ouichefs_read_cached(struct file *file, char __user *buff, size_t size,
 			     loff_t *pos)
 {
 	struct inode *inode = file->f_inode;
+	struct address_space *mapping = inode->i_mapping;
 	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
 	struct ouichefs_file_index_block *index;
 	struct buffer_head *bh_index;
 	struct page *page;
-	int remaining_read = size, logical_block_index, logical_pos, nb_blocks,
-	    nb_blocks_in_page = PAGE_SIZE / OUICHEFS_BLOCK_SIZE, bno,
-	    available_size, len;
-	pgoff_t pgi;
+	int remaining_read = size, logical_pos, nb_blocks, block_size,
+	    available_size, len, logical_block_index;
 
 	/* Check if we can read */
 	if (read_flags(file) < 0)
@@ -223,35 +223,29 @@ ssize_t ouichefs_read_cached(struct file *file, char __user *buff, size_t size,
 			   &logical_pos))
 		goto read_end;
 
-	pgi = logical_block_index / nb_blocks_in_page;
-
-	/* Add other condition to the while*/
 	while (remaining_read && (logical_block_index < nb_blocks)) {
-		pr_info(" pgi : %lu, logical block index : %d logical pos : %d\n",
-			pgi, logical_block_index, logical_pos);
-
-		page = grab_cache_page(file->f_mapping, pgi);
-		bno = index->blocks[logical_block_index];
+		page = read_mapping_page(mapping, logical_block_index, NULL);
+		if (IS_ERR(page))
+			goto read_end;
 
 		/* Available size between the cursor and the end of the block */
-		available_size = get_block_size(bno) - logical_pos;
+		block_size = get_block_size(index->blocks[logical_block_index]);
+		available_size = block_size - logical_pos;
 		if (available_size <= 0)
 			goto free_page;
 
 		/* Do not read more than what's available and asked */
 		len = min(available_size, remaining_read);
 
-		if (copy_to_user(buff, page_address(page) + logical_pos, len))
-			pr_err("%s: copy_to_user() failed\n", __func__);
-
-		pr_info("data from read: :%s\n", (char *)page_address(page));
+		if (copy_to_user(buff, page_address(page) + logical_pos, len)) {
+			pr_err("copy_to_user() failed\n");
+			goto free_page;
+		}
 
 		remaining_read -= len;
 		logical_block_index++;
+		/* The cursor position will start at 0 in subsequent blocks */
 		logical_pos = 0;
-
-		/* Could be optimized */
-		pgi = logical_block_index / nb_blocks_in_page;
 
 		unlock_page(page);
 		put_page(page);

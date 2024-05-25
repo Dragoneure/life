@@ -12,12 +12,13 @@ int test_read_cached()
 
 	write(fd, wbuf, len);
 
-	set_read_fn(DEFAULT_READ);
-	pr_file(fd, 0, len);
+	lseek(fd, 0, SEEK_SET);
+	read(fd, rbuf, len);
 
-	flush_cache();
+	ASSERT_EQ_BUF(rbuf, wbuf, len);
 
-	set_read_fn(CACHED_READ);
+	lseek(fd, 0, SEEK_SET);
+	read(fd, rbuf, len);
 
 	lseek(fd, 0, SEEK_SET);
 	read(fd, rbuf, len);
