@@ -11,9 +11,8 @@ int test_read_cached()
 	char rbuf[len];
 
 	write(fd, wbuf, len);
-	lseek(fd, 0, SEEK_SET);
 
-	// set_read_fn(DEFAULT_READ);
+	set_read_fn(DEFAULT_READ);
 	pr_file(fd, 0, len);
 
 	flush_cache();
@@ -22,10 +21,6 @@ int test_read_cached()
 
 	lseek(fd, 0, SEEK_SET);
 	read(fd, rbuf, len);
-
-	pr_file(fd, 0, lseek(fd, 0, SEEK_END));
-	pr_buf(rbuf, len);
-	printf("\n");
 
 	ASSERT_EQ_BUF(rbuf, wbuf, len);
 

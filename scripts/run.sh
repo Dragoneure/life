@@ -8,12 +8,13 @@
 # using user seed for all tests
 # ./run.sh 42
 
-TEST_DEFAULT=1
-TEST_SIMPLE=1
-TEST_INSERT=1
+TEST_DEFAULT=0
+TEST_SIMPLE=0
+TEST_INSERT=0
+TEST_CACHED=1
 
-BENCH_SIMPLE=1
-BENCH_INSERT=1
+BENCH_SIMPLE=0
+BENCH_INSERT=0
 
 # load ouichefs
 insmod /share/ouichefs.ko
