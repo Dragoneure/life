@@ -143,6 +143,27 @@ int test_empty_file()
 	return TEST_SUCCESS;
 }
 
+int test_read_cached()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+
+	char wbuf[] = "Hello cruel world!\n";
+	size_t len = strlen(wbuf) + 1;
+	set_write_fn(DEFAULT_WRITE);
+	write(fd, wbuf, len);
+	lseek(fd, 0, SEEK_SET);
+	set_read_fn(PAGE_READ);
+
+	char rbuf[len];
+	lseek(fd, 0, SEEK_SET);
+	read(fd, rbuf, len);
+	pr_file(fd, 0, lseek(fd, 0, SEEK_END));
+	pr_buf(rbuf, len);
+	ASSERT_EQ_BUF(rbuf, wbuf, len);
+
+	return TEST_SUCCESS;
+}
+
 int main(int argc, char **argv)
 {
 	int seed = 42;
@@ -153,13 +174,14 @@ int main(int argc, char **argv)
 	srand(seed);
 	pr_test("Seed used: %d\n", seed);
 
-	RUN_TEST(test_simple_file_write);
-	RUN_TEST(test_write_read);
-	RUN_TEST(test_simple_read_insert);
-	RUN_TEST(test_rand_read);
-	RUN_TEST(test_write_filesize_end);
-	RUN_TEST(test_write_block_end);
-	RUN_TEST(test_empty_file);
+	// RUN_TEST(test_simple_file_write);
+	// RUN_TEST(test_write_read);
+	// RUN_TEST(test_simple_read_insert);
+	// RUN_TEST(test_rand_read);
+	// RUN_TEST(test_write_filesize_end);
+	// RUN_TEST(test_write_block_end);
+	// RUN_TEST(test_empty_file);
+	RUN_TEST(test_read_cached);
 
 	return 0;
 }

@@ -121,6 +121,8 @@ extern ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 extern ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 			      size_t size, loff_t *pos);
 extern int ouichefs_defrag(struct file *file);
+extern ssize_t ouichefs_read_cached(struct file *file, char __user *buff, size_t size,
+			     loff_t *pos);
 
 /* Getters for superbock and inode */
 #define OUICHEFS_SB(sb) (sb->s_fs_info)

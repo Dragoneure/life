@@ -31,6 +31,7 @@ static inline int idiv_ceil(int a, int b)
 #define DEFAULT_READ '0'
 #define SIMPLE_READ '1'
 #define LIGHT_READ '2'
+#define PAGE_READ '3'
 
 static inline void set_read_fn(char read_fn)
 {
