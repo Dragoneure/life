@@ -1,13 +1,13 @@
 obj-m += ouichefs.o
 ouichefs-objs := src/fs.o src/super.o src/inode.o src/file.o \
-	src/dir.o src/read.o src/write.o src/defrag.o src/ioctl.o src/read_page.o
+	src/dir.o src/read.o src/write.o src/defrag.o src/ioctl.o \
+	src/read_cached.o
 
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 ENV_KERNELDIR := $(shell grep -Po '^KERNELDIR=\K.*' .env 2> /dev/null)
 ifdef ENV_KERNELDIR	
 	KERNELDIR := $(ENV_KERNELDIR)
 endif
-
 
 BUILDDIR := build
 SHAREDIR := share
@@ -27,12 +27,14 @@ module:
 	make -C $(KERNELDIR) M=$(PWD) modules
 	$(call move_files)
 
-user: test test_insert bench bench_insert
+user: test test_insert bench bench_insert test_cached
 
 test:
 	$(CC) -static src/user/test.c -o $(SHAREDIR)/test.o 
 test_insert:
 	$(CC) -static src/user/test_insert.c -o $(SHAREDIR)/test_insert.o 
+test_cached:
+	$(CC) -static src/user/test_cached.c -o $(SHAREDIR)/test_cached.o
 bench:
 	$(CC) -static src/user/bench.c -o $(SHAREDIR)/bench.o 
 bench_insert:
