@@ -8,6 +8,19 @@
 #include "ouichefs.h"
 #include "bitmap.h"
 
+/*
+ * Check file flags and update pos if needed.
+ * Return -1 in case of error.
+ */
+int write_flags(struct file *file, loff_t *pos)
+{
+	if (file->f_flags & O_APPEND)
+		*pos = file->f_inode->i_size;
+	if (file->f_flags & O_RDONLY)
+		return -1;
+	return 0;
+}
+
 /* Returns ceil(a/b) */
 static inline uint32_t idiv_ceil(uint32_t a, uint32_t b)
 {
@@ -91,6 +104,10 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 	size_t remaining_write = size, written = 0, nb_allocs = 0,
 	       new_file_size = 0;
 	int nb_blocks, logical_block_index, logical_pos;
+
+	/* Update the pos based on the flags (e.g APPEND) */
+	if (write_flags(file, pos) < 0)
+		return -EINVAL;
 
 	/* Check if the write can be completed (enough space?) */
 	if (*pos + size > OUICHEFS_MAX_FILESIZE)
@@ -304,6 +321,10 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 					      last_bli;
 	bool move_old_content = 0, shift_old_content = 0;
 	ssize_t ret = 0;
+
+	/* Update the pos based on the flags (e.g APPEND) */
+	if (write_flags(file, pos) < 0)
+		return -EINVAL;
 
 	/* Check if the write can be completed (enough space?) */
 	if (*pos + size > OUICHEFS_MAX_FILESIZE)
