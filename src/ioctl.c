@@ -49,7 +49,7 @@ static int ouichefs_ioctl_file_info(struct file *file,
 	}
 	index = (struct ouichefs_file_index_block *)bh_index->b_data;
 
-	if (inode->i_blocks > 10)
+	if (display && inode->i_blocks > 10)
 		pr_cont("\n");
 
 	for (int i = 0; i < inode->i_blocks - 1; i++) {
