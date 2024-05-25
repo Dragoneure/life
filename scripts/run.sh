@@ -76,12 +76,22 @@ if [ $BENCH_INSERT -eq 1 ]; then
 fi
 
 # some scripts
-echo -e "\n\033[1mVisual tests using scripts:\033[0m"
+echo -e "\n\033[1mVisual tests using scripts with lite read/write:\033[0m"
 touch bloup
 echo -n "Hello " > bloup
-echo -n "World\n" >> bloup
+echo "World" >> bloup
 cat bloup
 rm bloup
+
+echo -e "\n\033[1mUsing lite read with page cache:\033[0m\n"
+echo -n '0' > /sys/kernel/ouichefs/write_fn
+echo -n '2' > /sys/kernel/ouichefs/read_fn
+if [ ! -n "$1" ]; then
+  seed=$((seed + 1))
+fi
+if [ $TEST_CACHED -eq 1 ]; then
+  /share/test_cached.o "$seed"
+fi
 
 cd ~
 
