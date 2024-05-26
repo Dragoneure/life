@@ -72,8 +72,16 @@ if [ $TEST_INSERT -eq 1 ]; then
   /share/test_insert.o "$seed"
 fi
 if [ $BENCH_INSERT -eq 1 ]; then
-  echo BENCH_INSERT
+  /share/bench_insert.o
 fi
+
+# some scripts
+echo -e "\n\033[1mVisual tests using scripts:\033[0m"
+touch bloup
+echo -n "Hello " > bloup
+echo -n "World\n" >> bloup
+cat bloup
+rm bloup
 
 cd ~
 

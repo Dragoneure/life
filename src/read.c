@@ -7,6 +7,17 @@
 #include "ouichefs.h"
 #include "bitmap.h"
 
+/*
+ * Check file flags.
+ * Return -1 in case of error.
+ */
+int read_flags(struct file *file)
+{
+	if (file->f_flags & O_WRONLY)
+		return -1;
+	return 0;
+}
+
 ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 		      loff_t *pos)
 {
@@ -16,6 +27,10 @@ ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 	struct buffer_head *bh_index, *bh_data;
 	size_t remaining_read = size, readen = 0;
 	int last_block_size, nb_blocks, logical_block_index, logical_pos;
+
+	/* Check if we can read */
+	if (read_flags(file) < 0)
+		return -EINVAL;
 
 	/* Read index block from disk */
 	bh_index = sb_bread(inode->i_sb, ci->index_block);
@@ -98,6 +113,10 @@ ssize_t ouichefs_light_read(struct file *file, char __user *buff, size_t size,
 	struct buffer_head *bh_index, *bh_data;
 	size_t remaining_read = size;
 	int nb_blocks, logical_block_index, logical_pos;
+
+	/* Check if we can read */
+	if (read_flags(file) < 0)
+		return -EINVAL;
 
 	/* Read index block from disk */
 	bh_index = sb_bread(inode->i_sb, ci->index_block);

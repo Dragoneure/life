@@ -4,6 +4,40 @@
 #include <string.h>
 #include <unistd.h>
 
+/*
+ * Automated tests
+ */
+
+int test_hello_world()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+
+	char buf1[] = "Hello\n";
+	char buf2[] = "World\n";
+	size_t total_len = strlen(buf1) + strlen(buf2);
+
+	write(fd, buf1, strlen(buf1));
+
+	close(fd);
+	fd = open(__func__, O_RDWR | O_CREAT | O_APPEND, 0644);
+
+	write(fd, buf2, strlen(buf2));
+
+	char rbuf[total_len];
+
+	DEFRAG_FILE(fd);
+
+	lseek(fd, 0, SEEK_SET);
+	read(fd, rbuf, total_len);
+	ASSERT_EQ_BUF(rbuf, buf1, strlen(buf1));
+	ASSERT_EQ_BUF(rbuf + strlen(buf1), buf2, strlen(buf2));
+
+	size_t file_size = lseek(fd, 0, SEEK_END);
+	ASSERT_EQ(file_size, total_len);
+
+	return TEST_SUCCESS;
+}
+
 int test_write_insert_begin()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
@@ -19,6 +53,8 @@ int test_write_insert_begin()
 	ASSERT_FILE(fd, 2, (BLOCK_SIZE - prev_len) + (BLOCK_SIZE - len));
 
 	char rbuf[prev_len + len];
+
+	DEFRAG_FILE(fd);
 
 	lseek(fd, 0, SEEK_SET);
 	read(fd, rbuf, prev_len + len);
@@ -55,7 +91,6 @@ int test_write_insert()
 			    (BLOCK_SIZE - next_len));
 
 	DEFRAG_FILE(fd);
-	SHOW_FILE_INFO(fd);
 	ASSERT_FILE(fd, 1, (BLOCK_SIZE - (prev_len + next_len + insert_len)));
 
 	lseek(fd, 0, SEEK_SET);
@@ -106,6 +141,9 @@ int test_write_pos(int fd, int SEEK, int offset)
 	ASSERT_FILE(fd, 1, BLOCK_SIZE - 4);
 	int cur = lseek(fd, 400, SEEK_END);
 	write(fd, wbuf, len);
+
+	ASSERT_FILE(fd, 1, (BLOCK_SIZE - (404 + len)));
+	DEFRAG_FILE(fd);
 	ASSERT_FILE(fd, 1, (BLOCK_SIZE - (404 + len)));
 
 	lseek(fd, cur, SEEK_SET);
@@ -159,6 +197,9 @@ int test_write_in_padding(int fd, int start_pos, int file_size,
 	nb_blocks = idiv_ceil(size, BLOCK_SIZE);
 	ASSERT_FILE(fd, nb_blocks, (nb_blocks * BLOCK_SIZE) - size);
 
+	DEFRAG_FILE(fd);
+	ASSERT_FILE(fd, nb_blocks, (nb_blocks * BLOCK_SIZE) - size);
+
 	char rbuf[len];
 	write_empty = 0;
 
@@ -198,7 +239,87 @@ int test_write_with_offset_far()
 int test_write_with_offset_end()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
-	return test_write_in_padding(fd, MAX_FILESIZE - 70, MAX_FILESIZE, 22);
+	int ret =
+		test_write_in_padding(fd, MAX_FILESIZE - 70, MAX_FILESIZE, 22);
+	size_t file_size = lseek(fd, 0, SEEK_END);
+	ASSERT_EQ(file_size, (size_t)MAX_FILESIZE - 24);
+	return ret;
+}
+
+/*
+ * Visual tests
+ */
+
+int test_big_content()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+
+	size_t len = 3 * BLOCK_SIZE + BLOCK_SIZE / 1.2;
+	char wbuf[len];
+	int start = 0;
+	init_seq_buff(wbuf, len, &start);
+
+	write(fd, wbuf, len);
+
+	lseek(fd, BLOCK_SIZE * 7 + 7, SEEK_SET);
+	write(fd, wbuf, len);
+
+	SHOW_FILE_INFO(fd);
+	DEFRAG_FILE(fd);
+	SHOW_FILE_INFO(fd);
+
+	size_t file_size = lseek(fd, 0, SEEK_END);
+	pr_file(fd, 0, file_size);
+
+	return TEST_SUCCESS;
+}
+
+int test_write_user_simple()
+{
+	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
+
+	char buf1[] = "Bonjour ";
+	char buf2[] = "je  ";
+	char buf3[] = "suis ";
+	char buf4[] = "la ";
+	char buf5[] = "mort ";
+	char buf_middle[] = " coucou ";
+	char buf_end[] = "c'est la fin ";
+	char buf_bef_far[] = "|just before so far away..|";
+	char buf_far[] = "so far away";
+	size_t far_offset = BLOCK_SIZE * 4 - 3;
+
+	write(fd, buf1, strlen(buf1));
+	lseek(fd, 0, SEEK_SET);
+	write(fd, buf2, strlen(buf2));
+	lseek(fd, 0, SEEK_SET);
+	write(fd, buf3, strlen(buf3));
+	lseek(fd, 0, SEEK_SET);
+	write(fd, buf4, strlen(buf4));
+	lseek(fd, 0, SEEK_SET);
+	write(fd, buf5, strlen(buf5));
+
+	lseek(fd, 0, SEEK_END);
+	write(fd, buf_end, strlen(buf_end));
+
+	lseek(fd, 20, SEEK_SET);
+	write(fd, buf_middle, strlen(buf_middle));
+
+	lseek(fd, far_offset, SEEK_SET);
+	write(fd, buf_far, strlen(buf_far));
+
+	lseek(fd, far_offset, SEEK_SET);
+	write(fd, buf_bef_far, strlen(buf_bef_far));
+
+	SHOW_FILE_INFO(fd);
+	DEFRAG_FILE(fd);
+	SHOW_FILE_INFO(fd);
+
+	int file_size = lseek(fd, 0, SEEK_END);
+	printf("file size : %d\n", file_size);
+	pr_file(fd, 0, file_size);
+
+	return TEST_SUCCESS;
 }
 
 int main(int argc, char **argv)
@@ -211,6 +332,8 @@ int main(int argc, char **argv)
 	srand(seed);
 	pr_test("Seed used: %d\n", seed);
 
+	/* automated tests */
+	RUN_TEST(test_hello_world);
 	RUN_TEST(test_write_insert_begin);
 	RUN_TEST(test_write_insert);
 	RUN_TEST(test_defrag);
@@ -221,6 +344,10 @@ int main(int argc, char **argv)
 	RUN_TEST(test_write_with_offset);
 	RUN_TEST(test_write_with_offset_far);
 	RUN_TEST(test_write_with_offset_end);
+
+	/* visual tests */
+	// RUN_TEST(test_big_content);
+	// RUN_TEST(test_write_user_simple);
 
 	return 0;
 }

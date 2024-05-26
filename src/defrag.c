@@ -22,6 +22,8 @@ int move_shift_block_content_to(struct ouichefs_file_index_block *index,
 	from_len = get_block_size(index->blocks[block_index_from]);
 	to_available_len = OUICHEFS_BLOCK_SIZE - logical_pos;
 	to_copy = min(from_len, to_available_len);
+	if (to_copy == 0)
+		return 0;
 
 	bh_data_from =
 		sb_bread(sb, get_block_number(index->blocks[block_index_from]));
@@ -38,7 +40,7 @@ int move_shift_block_content_to(struct ouichefs_file_index_block *index,
 	/* Shift up any remaining data in source block. */
 	memcpy(bh_data_from->b_data, bh_data_from->b_data + to_copy,
 	       from_len - to_copy);
-	memset(bh_data_from->b_data + to_copy, 0, from_len - to_copy);
+	memset(bh_data_from->b_data + (from_len - to_copy), 0, to_copy);
 
 	mark_buffer_dirty(bh_data_from);
 	sync_dirty_buffer(bh_data_from);
@@ -56,11 +58,12 @@ int move_shift_block_content_to(struct ouichefs_file_index_block *index,
 void bubble_up_block(struct ouichefs_file_index_block *index, int block_index,
 		     int nb_blocks)
 {
-	for (int bli = block_index; bli < nb_blocks - 1; bli++) {
-		int temp = index->blocks[bli];
+	int tmp;
 
+	for (int bli = block_index; bli < nb_blocks - 1; bli++) {
+		tmp = index->blocks[bli];
 		index->blocks[bli] = index->blocks[bli + 1];
-		index->blocks[bli + 1] = temp;
+		index->blocks[bli + 1] = tmp;
 	}
 }
 
@@ -112,6 +115,7 @@ int ouichefs_defrag(struct file *file)
 		if (logical_pos == OUICHEFS_BLOCK_SIZE) {
 			bli++;
 			logical_pos = get_block_size(index->blocks[bli]);
+			data_moved += logical_pos;
 		}
 	}
 

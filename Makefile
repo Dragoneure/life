@@ -27,7 +27,7 @@ module:
 	make -C $(KERNELDIR) M=$(PWD) modules
 	$(call move_files)
 
-user: test test_insert bench
+user: test test_insert bench bench_insert
 
 test:
 	$(CC) -static src/user/test.c -o $(SHAREDIR)/test.o 
@@ -35,6 +35,8 @@ test_insert:
 	$(CC) -static src/user/test_insert.c -o $(SHAREDIR)/test_insert.o 
 bench:
 	$(CC) -static src/user/bench.c -o $(SHAREDIR)/bench.o 
+bench_insert:
+	$(CC) -static src/user/bench_insert.c -o $(SHAREDIR)/bench_insert.o 
 
 scripts:
 	# copy scripts

@@ -8,6 +8,19 @@
 #include "ouichefs.h"
 #include "bitmap.h"
 
+/*
+ * Check file flags and update pos if needed.
+ * Return -1 in case of error.
+ */
+int write_flags(struct file *file, loff_t *pos)
+{
+	if (file->f_flags & O_APPEND)
+		*pos = file->f_inode->i_size;
+	if (file->f_flags & O_RDONLY)
+		return -1;
+	return 0;
+}
+
 /* Returns ceil(a/b) */
 static inline uint32_t idiv_ceil(uint32_t a, uint32_t b)
 {
@@ -91,6 +104,10 @@ ssize_t ouichefs_write(struct file *file, const char __user *buff, size_t size,
 	size_t remaining_write = size, written = 0, nb_allocs = 0,
 	       new_file_size = 0;
 	int nb_blocks, logical_block_index, logical_pos;
+
+	/* Update the pos based on the flags (e.g APPEND) */
+	if (write_flags(file, pos) < 0)
+		return -EINVAL;
 
 	/* Check if the write can be completed (enough space?) */
 	if (*pos + size > OUICHEFS_MAX_FILESIZE)
@@ -192,10 +209,10 @@ write_end:
  * Shift all blocks from block_index by nb_blocks to the right.
  */
 void shift_blocks(struct ouichefs_file_index_block *index, int block_index,
-		  int nb_blocks)
+		  int nb_shift, int last_bli)
 {
-	for (int bli = nb_blocks; bli >= block_index; bli--) {
-		index->blocks[bli + nb_blocks] = index->blocks[bli];
+	for (int bli = last_bli; bli >= block_index; bli--) {
+		index->blocks[bli + nb_shift] = index->blocks[bli];
 		index->blocks[bli] = 0;
 	}
 }
@@ -300,9 +317,14 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	struct buffer_head *bh_index = NULL, *bh_data = NULL;
 	size_t remaining_write = size, written = 0, nb_allocs = 0, to_copy = 0;
 	int logical_block_index, logical_pos, alloc_index_start = 0, nb_blocks,
-					      remaining_size, available_size;
+					      remaining_size, available_size,
+					      last_bli;
 	bool move_old_content = 0, shift_old_content = 0;
 	ssize_t ret = 0;
+
+	/* Update the pos based on the flags (e.g APPEND) */
+	if (write_flags(file, pos) < 0)
+		return -EINVAL;
 
 	/* Check if the write can be completed (enough space?) */
 	if (*pos + size > OUICHEFS_MAX_FILESIZE)
@@ -331,8 +353,8 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 		/* Should we move old content to a new block */
 		move_old_content = to_copy > 0;
 		/* Shift only if we are not in the last block */
-		shift_old_content = logical_block_index !=
-				    max((int)inode->i_blocks - 2, 0);
+		last_bli = max((int)inode->i_blocks - 2, 0);
+		shift_old_content = logical_block_index != last_bli;
 	}
 
 	/*
@@ -358,7 +380,7 @@ ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 	if (index->blocks[logical_block_index] == 0)
 		alloc_index_start--;
 	if (shift_old_content && nb_allocs > 0)
-		shift_blocks(index, alloc_index_start, nb_allocs);
+		shift_blocks(index, alloc_index_start, nb_allocs, last_bli);
 	reserve_empty_blocks(inode, index, alloc_index_start, nb_allocs);
 
 	/*

@@ -1,4 +1,6 @@
 #include "utils.h"
+#include <stddef.h>
+#include <stdio.h>
 
 int test_simple_file_write()
 {
@@ -110,6 +112,9 @@ int check_write_end(int fd, size_t end_pos)
 	lseek(fd, end_pos - end_offset, SEEK_SET);
 	ASSERT_EQ(read(fd, rbuf, len), end_offset);
 	ASSERT_EQ_BUF(rbuf, &wbuf[len - end_offset], end_offset);
+
+	size_t filesize = lseek(fd, 0, SEEK_END);
+	ASSERT_EQ(filesize, end_pos);
 
 	return TEST_SUCCESS;
 }
