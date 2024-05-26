@@ -8,6 +8,7 @@
 #define DEFAULT_READ '0'
 #define SIMPLE_READ '1'
 #define LIGHT_READ '2'
+#define PAGE_READ '3'
 
 #define DEFAULT_WRITE '0'
 #define SIMPLE_WRITE '1'
@@ -30,6 +31,9 @@ static ssize_t read_fn_store(struct kobject *kobj, struct kobj_attribute *attr,
 		break;
 	case LIGHT_READ:
 		ouichefs_file_ops.read = ouichefs_light_read;
+		break;
+	case PAGE_READ:
+		ouichefs_file_ops.read = ouichefs_read_cached;
 		break;
 	default:
 		pr_err("Invalid read fn code\n");

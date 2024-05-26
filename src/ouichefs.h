@@ -109,18 +109,20 @@ int find_block_pos(loff_t pos, struct ouichefs_file_index_block *index,
 extern struct file_operations ouichefs_file_ops;
 extern const struct file_operations ouichefs_dir_ops;
 extern const struct address_space_operations ouichefs_aops;
-extern ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
+ssize_t ouichefs_read(struct file *file, char __user *buff, size_t size,
 			     loff_t *pos);
-extern ssize_t ouichefs_write(struct file *file, const char __user *buff,
+ssize_t ouichefs_write(struct file *file, const char __user *buff,
 			      size_t size, loff_t *pos);
-extern long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
-extern ssize_t ouichefs_light_read(struct file *file, char __user *buff, size_t size,
+long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
+ssize_t ouichefs_light_read(struct file *file, char __user *buff, size_t size,
 			     loff_t *pos);
-extern ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
+ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 			      size_t size, loff_t *pos);
-extern ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
+ssize_t ouichefs_light_write(struct file *file, const char __user *buff,
 			      size_t size, loff_t *pos);
-extern int ouichefs_defrag(struct file *file);
+int ouichefs_defrag(struct file *file);
+ssize_t ouichefs_read_cached(struct file *file, char __user *buff, size_t size,
+			     loff_t *pos);
 
 /* Getters for superbock and inode */
 #define OUICHEFS_SB(sb) (sb->s_fs_info)

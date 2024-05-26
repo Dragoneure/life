@@ -8,7 +8,6 @@ ifdef ENV_KERNELDIR
 	KERNELDIR := $(ENV_KERNELDIR)
 endif
 
-
 BUILDDIR := build
 SHAREDIR := share
 
@@ -27,12 +26,14 @@ module:
 	make -C $(KERNELDIR) M=$(PWD) modules
 	$(call move_files)
 
-user: test test_insert bench bench_insert
+user: test test_insert bench bench_insert test_cached
 
 test:
 	$(CC) -static src/user/test.c -o $(SHAREDIR)/test.o 
 test_insert:
 	$(CC) -static src/user/test_insert.c -o $(SHAREDIR)/test_insert.o 
+test_cached:
+	$(CC) -static src/user/test_cached.c -o $(SHAREDIR)/test_cached.o
 bench:
 	$(CC) -static src/user/bench.c -o $(SHAREDIR)/bench.o 
 bench_insert:

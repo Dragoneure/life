@@ -8,11 +8,12 @@
 # using user seed for all tests
 # ./run.sh 42
 
-TEST_DEFAULT=1
-TEST_SIMPLE=1
+TEST_DEFAULT=0
+TEST_SIMPLE=0
 TEST_INSERT=1
+TEST_CACHED=1
 
-BENCH_SIMPLE=1
+BENCH_SIMPLE=0
 BENCH_INSERT=1
 
 # load ouichefs
@@ -76,12 +77,21 @@ if [ $BENCH_INSERT -eq 1 ]; then
 fi
 
 # some scripts
-echo -e "\n\033[1mVisual tests using scripts:\033[0m"
+echo -e "\n\033[1mVisual tests using scripts with lite read/write:\033[0m"
 touch bloup
 echo -n "Hello " > bloup
-echo -n "World\n" >> bloup
+echo "World" >> bloup
 cat bloup
 rm bloup
+
+echo -e "\n\033[1mUsing lite read with page cache:\033[0m\n"
+echo -n '3' > /sys/kernel/ouichefs/read_fn
+if [ ! -n "$1" ]; then
+  seed=$((seed + 1))
+fi
+if [ $TEST_CACHED -eq 1 ]; then
+  /share/test_cached.o "$seed"
+fi
 
 cd ~
 

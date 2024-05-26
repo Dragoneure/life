@@ -55,9 +55,9 @@ static int ouichefs_file_get_block(struct inode *inode, sector_t iblock,
 			ret = -ENOSPC;
 			goto brelse_index;
 		}
-		index->blocks[iblock] = bno;
+		set_block_number(&index->blocks[iblock], bno);
 	} else {
-		bno = index->blocks[iblock];
+		bno = get_block_number(index->blocks[iblock]);
 	}
 
 	/* Map the physical block to the given buffer_head */
@@ -97,6 +97,11 @@ int find_block_pos(loff_t pos, struct ouichefs_file_index_block *index,
 	*logical_pos = remaining_size;
 
 	return 0;
+}
+
+static int ouichefs_read_folio(struct file *file, struct folio *folio)
+{
+	return mpage_read_folio(folio, ouichefs_file_get_block);
 }
 
 /*
@@ -217,6 +222,7 @@ end:
 }
 
 const struct address_space_operations ouichefs_aops = {
+	.read_folio = ouichefs_read_folio,
 	.readahead = ouichefs_readahead,
 	.writepage = ouichefs_writepage,
 	.write_begin = ouichefs_write_begin,
@@ -264,5 +270,5 @@ struct file_operations ouichefs_file_ops = {
 	.read_iter = generic_file_read_iter,
 	.write = ouichefs_write,
 	.write_iter = generic_file_write_iter,
-	.unlocked_ioctl = ouichefs_ioctl
+	.unlocked_ioctl = ouichefs_ioctl,
 };
