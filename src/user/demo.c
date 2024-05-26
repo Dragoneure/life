@@ -28,7 +28,7 @@ int main()
 		return -1;
 	}
 
-	char wbuf2[] = "|Intrusion!|\n";
+	char wbuf2[] = "|Intrusion!\n|";
 	size_t len2 = strlen(wbuf2);
 	size_t pos2 = lseek(fd, 9, SEEK_SET);
 	write(fd, wbuf2, len2);
