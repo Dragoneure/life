@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 
+#include "linux/types.h"
 #define pr_fmt(fmt) "%s:%s: " fmt, KBUILD_MODNAME, __func__
 
-#include "asm-generic/errno-base.h"
 #include "linux/file.h"
 #include "linux/buffer_head.h"
 #include "ouichefs.h"
@@ -87,6 +87,61 @@ end:
 	return ret;
 }
 
+static int ouichefs_ioctl_file_block_print(struct file *file) {
+	int ret = 0;
+
+	struct inode *inode = file->f_inode;
+	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
+	struct ouichefs_file_index_block *index = NULL;
+	struct buffer_head *bh_index = NULL, *bh_data = NULL;
+	uint32_t block_size;
+	uint32_t block;
+
+        pr_info("file information:\n\n"
+                "\tsize: %lld\n"
+                "\tdata blocks number: %llu\n\n",
+                inode->i_size, inode->i_blocks - 1);
+
+	/* Read index block from disk */
+	bh_index = sb_bread(inode->i_sb, ci->index_block);
+	if (!bh_index) {
+		ret = -EFAULT;
+		pr_err("could not read index block\n");
+		goto end;
+	}
+	index = (struct ouichefs_file_index_block *)bh_index->b_data;
+
+	for (int i = 0; i < inode->i_blocks - 1; i++) {
+		block = index->blocks[i];
+		block_size = get_block_size(block);
+
+                pr_cont("\t%d: block with id %u: \n",i, get_block_number(block));
+                size_t block_size = get_block_size(block);
+                char buff[1025];
+                bh_data = sb_bread(inode->i_sb, get_block_number(block));
+                if (!bh_data) {
+                        goto end;
+                }
+                int nb_iter = (block_size/1024)+1;
+                int size_last_iter = block_size%1024;
+                for (int i = 0; i < nb_iter; i++) {
+                        if (i != nb_iter-1) {
+                                memcpy(buff, bh_data->b_data + 1024*i, 1024);
+                                buff[1024] = 0;
+                        } else {
+                                memcpy(buff, bh_data->b_data + 1024*i, size_last_iter);
+                                buff[size_last_iter+1] = 0;
+                        }
+                        pr_cont("\t\t%s\n",buff);
+                }
+	}
+
+	brelse(bh_index);
+
+end:
+	return ret;
+}
+
 static int ouichefs_ioctl_defrag(struct file *file)
 {
 	return ouichefs_defrag(file);
@@ -104,6 +159,8 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return ouichefs_ioctl_file_info(file, argp);
 	case OUICHEFS_IOC_DEFRAG:
 		return ouichefs_ioctl_defrag(file);
+        case OUICHEFS_IOC_FILE_BLOCK_PRINT:
+                return ouichefs_ioctl_file_block_print(file);
 	default:
 		return -EINVAL;
 	}

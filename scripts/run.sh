@@ -16,6 +16,8 @@ TEST_CACHED=1
 BENCH_SIMPLE=0
 BENCH_INSERT=1
 
+RUN_DEMO=1
+
 # load ouichefs
 insmod /share/ouichefs.ko
 
@@ -74,6 +76,9 @@ if [ $TEST_INSERT -eq 1 ]; then
 fi
 if [ $BENCH_INSERT -eq 1 ]; then
   /share/bench_insert.o
+fi
+if [ "$RUN_DEMO" -eq 1 ]; then
+        /share/demo.o
 fi
 
 # some scripts

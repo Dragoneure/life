@@ -38,6 +38,8 @@ bench:
 	$(CC) -static src/user/bench.c -o $(SHAREDIR)/bench.o 
 bench_insert:
 	$(CC) -static src/user/bench_insert.c -o $(SHAREDIR)/bench_insert.o 
+demo :
+	$(CC) -static src/user/demo.c -o $(SHAREDIR)/demo.o
 
 scripts:
 	# copy scripts
