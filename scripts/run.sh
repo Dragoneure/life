@@ -78,7 +78,7 @@ if [ $BENCH_INSERT -eq 1 ]; then
   /share/bench_insert.o
 fi
 if [ "$RUN_DEMO" -eq 1 ]; then
-        /share/demo.o
+  /share/demo.o
 fi
 
 # some scripts
