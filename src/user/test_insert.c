@@ -264,9 +264,15 @@ int test_big_content()
 	lseek(fd, BLOCK_SIZE * 7 + 7, SEEK_SET);
 	write(fd, wbuf, len);
 
+	printf("\nBefore defragmentation:\n");
 	SHOW_FILE_INFO(fd);
+	printf("\n");
+
 	DEFRAG_FILE(fd);
+
+	printf("After defragmentation:\n");
 	SHOW_FILE_INFO(fd);
+	printf("\n");
 
 	size_t file_size = lseek(fd, 0, SEEK_END);
 	pr_file(fd, 0, file_size);
@@ -278,13 +284,13 @@ int test_write_user_simple()
 {
 	int fd = open(__func__, O_RDWR | O_CREAT, 0644);
 
-	char buf1[] = "Bonjour ";
-	char buf2[] = "je  ";
-	char buf3[] = "suis ";
-	char buf4[] = "la ";
-	char buf5[] = "mort ";
-	char buf_middle[] = " coucou ";
-	char buf_end[] = "c'est la fin ";
+	char buf1[] = "first ";
+	char buf2[] = "second ";
+	char buf3[] = "third ";
+	char buf4[] = "forth ";
+	char buf5[] = "fifth ";
+	char buf_middle[] = "|in the middle|";
+	char buf_end[] = "at the end";
 	char buf_bef_far[] = "|just before so far away..|";
 	char buf_far[] = "so far away";
 	size_t far_offset = BLOCK_SIZE * 4 - 3;
@@ -311,9 +317,14 @@ int test_write_user_simple()
 	lseek(fd, far_offset, SEEK_SET);
 	write(fd, buf_bef_far, strlen(buf_bef_far));
 
+	printf("\nBefore defragmentation:\n");
 	SHOW_FILE_INFO(fd);
+
 	DEFRAG_FILE(fd);
+
+	printf("After defragmentation:\n");
 	SHOW_FILE_INFO(fd);
+	printf("\n");
 
 	int file_size = lseek(fd, 0, SEEK_END);
 	printf("file size : %d\n", file_size);
@@ -346,8 +357,8 @@ int main(int argc, char **argv)
 	RUN_TEST(test_write_with_offset_end);
 
 	/* visual tests */
-	// RUN_TEST(test_big_content);
-	// RUN_TEST(test_write_user_simple);
+	RUN_TEST(test_big_content);
+	RUN_TEST(test_write_user_simple);
 
 	return 0;
 }
