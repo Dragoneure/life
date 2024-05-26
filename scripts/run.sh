@@ -10,11 +10,13 @@
 
 TEST_DEFAULT=0
 TEST_SIMPLE=0
-TEST_INSERT=1
-TEST_CACHED=1
+TEST_INSERT=0
+TEST_CACHED=0
 
 BENCH_SIMPLE=0
-BENCH_INSERT=1
+BENCH_INSERT=0
+
+RUN_DEMO=1
 
 # load ouichefs
 insmod /share/ouichefs.ko
@@ -74,6 +76,11 @@ if [ $TEST_INSERT -eq 1 ]; then
 fi
 if [ $BENCH_INSERT -eq 1 ]; then
   /share/bench_insert.o
+fi
+
+rm $TESTDIR/*
+if [ "$RUN_DEMO" -eq 1 ]; then
+  /share/demo.o
 fi
 
 # some scripts

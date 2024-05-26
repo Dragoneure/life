@@ -3,7 +3,7 @@
 
 #define LEN_INIT 2000000
 #define LEN_INSERT 1000000
-#define OFFSET 500000
+#define OFFSET 5000
 
 char wbuf_init[LEN_INIT];
 char wbuf_insert[LEN_INSERT];
