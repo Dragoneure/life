@@ -4,6 +4,7 @@
 
 #include "linux/file.h"
 #include "linux/buffer_head.h"
+#include "linux/ctype.h"
 #include "ouichefs.h"
 #include "ioctl.h"
 #include "bitmap.h"
@@ -86,6 +87,32 @@ end:
 	return ret;
 }
 
+static void pr_buf(char *buf, uint32_t len)
+{
+	int new_line = 0;
+
+	for (size_t i = 0; i < len; i++) {
+		if (new_line > 100) {
+			pr_cont("\n\t\t");
+			new_line = 0;
+		}
+		if (isprint(buf[i])) {
+			pr_cont("%c", buf[i]);
+			new_line++;
+			continue;
+		} else if (buf[i] == '\0') {
+			pr_cont("\\0");
+			new_line += 2;
+		} else if (buf[i] == '\n') {
+			pr_cont("\\n");
+			new_line += 2;
+		} else {
+			pr_cont("?");
+			new_line++;
+		}
+	}
+}
+
 static int ouichefs_ioctl_file_block_print(struct file *file)
 {
 	struct inode *inode = file->f_inode;
@@ -109,35 +136,22 @@ static int ouichefs_ioctl_file_block_print(struct file *file)
 	index = (struct ouichefs_file_index_block *)bh_index->b_data;
 
 	for (int i = 0; i < inode->i_blocks - 1; i++) {
-		uint32_t block_size, block;
-		int nb_iter, size_last_iter;
-		char buff[1025];
+		uint32_t block_size, bno;
 
-		block = index->blocks[i];
-		block_size = get_block_size(block);
+		bno = index->blocks[i];
+		block_size = get_block_size(bno);
 
-		pr_cont("\t%d: block with id %u:\n", i,
-			get_block_number(block));
+		pr_cont("\t%d: block with id %u and size %u:\n", i,
+			get_block_number(bno), block_size);
 
-		block_size = get_block_size(block);
-		bh_data = sb_bread(inode->i_sb, get_block_number(block));
+		block_size = get_block_size(bno);
+		bh_data = sb_bread(inode->i_sb, get_block_number(bno));
 		if (!bh_data)
 			goto end;
 
-		nb_iter = (block_size / 1024) + 1;
-		size_last_iter = block_size % 1024;
-
-		for (int i = 0; i < nb_iter; i++) {
-			if (i != nb_iter - 1) {
-				memcpy(buff, bh_data->b_data + 1024 * i, 1024);
-				buff[1024] = 0;
-			} else {
-				memcpy(buff, bh_data->b_data + 1024 * i,
-				       size_last_iter);
-				buff[size_last_iter + 1] = 0;
-			}
-			pr_cont("\t\t%s\n", buff);
-		}
+		pr_cont("\t\t");
+		pr_buf(bh_data->b_data, block_size);
+		pr_cont("\n");
 	}
 
 	brelse(bh_index);

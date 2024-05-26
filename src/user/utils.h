@@ -145,6 +145,9 @@ static inline void pr_buf(const char *buf, size_t len)
 		} else if (buf[i] == '\0') {
 			printf("\\0");
 			new_line += 2;
+		} else if (buf[i] == '\n') {
+			printf("\\n");
+			new_line += 2;
 		} else {
 			printf("?");
 			new_line++;
