@@ -92,7 +92,7 @@ int ouichefs_defrag(struct file *file)
 	data_moved = get_block_size(index->blocks[bli]);
 	logical_pos = data_moved;
 
-	while (data_moved < inode->i_size && bli < inode->i_blocks - 1) {
+	while (data_moved < inode->i_size && bli < inode->i_blocks - 2) {
 		int block_moved;
 
 		/* Bubble up empty blocks at the end of the index array */
